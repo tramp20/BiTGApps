@@ -66,7 +66,7 @@ ui_print() {
 bb="$TMP/busybox-arm"
 l="$TMP/bin"
 
-for f in busybox-arm g.prop installer.sh pm.sh sqlite3 zipalign; do
+for f in busybox-arm g.prop init.bootlog.rc installer.sh pm.sh sqlite3 zipalign; do
   unzip -o "$ZIPFILE" "$f" -d "$TMP";
 done
 

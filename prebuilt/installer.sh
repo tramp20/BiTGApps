@@ -145,12 +145,14 @@ build_defaults() {
   CTS_DEFAULT_SYSTEM_EXT_BUILD_FINGERPRINT="ro.system.build.fingerprint=";
   CTS_DEFAULT_SYSTEM_BUILD_FINGERPRINT="ro.build.fingerprint=";
   CTS_DEFAULT_SYSTEM_BUILD_SEC_PATCH="ro.build.version.security_patch=";
+  CTS_DEFAULT_SYSTEM_BUILD_TYPE="ro.build.type=";
   CTS_DEFAULT_VENDOR_BUILD_FINGERPRINT="ro.vendor.build.fingerprint=";
   CTS_DEFAULT_VENDOR_BUILD_BOOTIMAGE="ro.bootimage.build.fingerprint=";
   # CTS patch
   CTS_SYSTEM_EXT_BUILD_FINGERPRINT="ro.system.build.fingerprint=google/coral/coral:10/QQ2A.200405.005/6254899:user/release-keys";
   CTS_SYSTEM_BUILD_FINGERPRINT="ro.build.fingerprint=google/coral/coral:10/QQ2A.200405.005/6254899:user/release-keys";
   CTS_SYSTEM_BUILD_SEC_PATCH="ro.build.version.security_patch=2020-04-05";
+  CTS_SYSTEM_BUILD_TYPE="ro.build.type=user";
   CTS_VENDOR_BUILD_FINGERPRINT="ro.vendor.build.fingerprint=google/coral/coral:10/QQ2A.200405.005/6254899:user/release-keys";
   CTS_VENDOR_BUILD_BOOTIMAGE="ro.bootimage.build.fingerprint=google/coral/coral:10/QQ2A.200405.005/6254899:user/release-keys";
 }
@@ -278,23 +280,39 @@ mount_part() {
       vendor_rw() {
         mount -o rw,remount -t auto /vendor
       }
+      block_vendor() {
+        mount -o ro -t auto /dev/block/bootdevice/by-name/vendor /vendor 2>/dev/null;
+        block_vendor_rw() {
+          mount -o rw,remount -t auto /dev/block/bootdevice/by-name/vendor /vendor
+        }
+        block_vendor_rw;
+      }
   fi;
   if [ -d /system_root ] && [ -n "$(cat /etc/fstab | grep /system_root)" ]; then
     ANDROID_ROOT=/system_root
   else
     ANDROID_ROOT=/system
   fi;
-  setup_mountpoint $ANDROID_ROOT
   if ! is_mounted $ANDROID_ROOT; then
     mount -o ro -t auto $ANDROID_ROOT 2>/dev/null;
       system_rw() {
         mount -o rw,remount -t auto $ANDROID_ROOT
+      }
+      block_system() {
+        mount -o ro -t auto /dev/block/bootdevice/by-name/$ANDROID_ROOT $ANDROID_ROOT 2>/dev/null;
+        block_system_rw() {
+          mount -o rw,remount -t auto /dev/block/bootdevice/by-name/$ANDROID_ROOT $ANDROID_ROOT
+        }
+        block_system_rw;
       }
   fi;
   local slot=$(getprop ro.boot.slot_suffix 2>/dev/null)
   if [ "$system_as_root" = "true" ]; then
     if [ "$slot" = "_a" ] || [ "$slot" = "_b" ]; then
       mount -o ro -t auto /dev/block/bootdevice/by-name/system$slot /system
+        system_ab_rw() {
+          mount -o rw,remount -t auto /dev/block/bootdevice/by-name/system$slot /system
+        }
     fi;
   fi;
 }
@@ -307,7 +325,12 @@ remount_part() {
     done
   done
   system_rw;
+  block_system;
+  if [ "$device_abpartition" == "true" ]; then
+    system_ab_rw;
+  fi;
   vendor_rw;
+  block_vendor;
   cache_rw;
   mount_apex;
 }
@@ -319,6 +342,37 @@ system_layout() {
     SYSTEM=/system_root/system
   else
     SYSTEM=/system
+  fi;
+}
+
+boot_SAR() {
+  if [ "$device_abpartition" == "false" ]; then
+    sed -i '/init.${ro.zygote}.rc/a\\import /init.bootlog.rc' /system_root/init.rc
+    cp -f $TMP/init.bootlog.rc /system_root/init.bootlog.rc
+    chmod 0750 /system_root/init.bootlog.rc
+    chcon -h u:object_r:rootfs:s0 "/system_root/init.bootlog.rc";
+  else
+    SAR_PARTITION_LAYOUT=false
+  fi;
+}
+
+boot_AB() {
+  if [ "$device_abpartition" == "true" ]; then
+    sed -i '/init.${ro.zygote}.rc/a\\import /init.bootlog.rc' /system/init.rc
+    cp -f $TMP/init.bootlog.rc /system/init.bootlog.rc
+    chmod 0750 /system/init.bootlog.rc
+    chcon -h u:object_r:rootfs:s0 "/system/init.bootlog.rc";
+  else
+    AB_PARTITION_LAYOUT=false
+  fi;
+}
+
+boot_A() {
+  if [ "$SAR_PARTITION_LAYOUT" == "false" ] && [ "$AB_PARTITION_LAYOUT" == "false" ]; then
+    sed -i '/init.${ro.zygote}.rc/a\\import /init.bootlog.rc' /init.rc
+    cp -f $TMP/init.bootlog.rc /init.bootlog.rc
+    chmod 0750 /init.bootlog.rc
+    chcon -h u:object_r:rootfs:s0 "/init.bootlog.rc";
   fi;
 }
 
@@ -672,6 +726,18 @@ product_pathmap() {
     chmod 0755 $SYSTEM_FRAMEWORK 2>/dev/null;
     chmod 0755 $SYSTEM_LIB 2>/dev/null;
     chmod 0755 $SYSTEM_LIB64 2>/dev/null;
+    chcon -h u:object_r:system_file:s0 $SYSTEM_ADDOND 2>/dev/null;
+    chcon -h u:object_r:system_file:s0 $SYSTEM_APP 2>/dev/null;
+    chcon -h u:object_r:system_file:s0 $SYSTEM_PRIV_APP 2>/dev/null;
+    chcon -h u:object_r:system_file:s0 $SYSTEM_ETC 2>/dev/null;
+    chcon -h u:object_r:system_file:s0 $SYSTEM_ETC_CONFIG 2>/dev/null;
+    chcon -h u:object_r:system_file:s0 $SYSTEM_ETC_DEFAULT 2>/dev/null;
+    chcon -h u:object_r:system_file:s0 $SYSTEM_ETC_PERM 2>/dev/null;
+    chcon -h u:object_r:system_file:s0 $SYSTEM_ETC_PREF 2>/dev/null;
+    chcon -h u:object_r:system_file:s0 $SYSTEM_FRAMEWORK 2>/dev/null;
+    chcon -h u:object_r:system_file:s0 $SYSTEM_LIB 2>/dev/null;
+    chcon -h u:object_r:system_file:s0 $SYSTEM_LIB64 2>/dev/null;
+    chcon -h u:object_r:system_file:s0 $SYSTEM_LIB64 2>/dev/null;
   fi;
 }
 
@@ -798,13 +864,19 @@ pre_installed_v29() {
       rm -rf $SYSTEM_ETC_CONFIG/google_build.xml
       rm -rf $SYSTEM_ETC_CONFIG/google_exclusives_enable.xml
       rm -rf $SYSTEM_ETC_CONFIG/google-hiddenapi-package-whitelist.xml
-      rm -rf $SYSTEM_ETC_DEFAULT/default-permissions
+      rm -rf $SYSTEM_ETC_CONFIG/pixel_experience_2017.xml
+      rm -rf $SYSTEM_ETC_CONFIG/pixel_experience_2018.xml
+      rm -rf $SYSTEM_ETC_CONFIG/pixel_experience_2019_midyear.xml
+      rm -rf $SYSTEM_ETC_CONFIG/pixel_experience_2019.xml
+      rm -rf $SYSTEM_ETC_CONFIG/whitelist_com.android.omadm.service.xml
+      rm -rf $SYSTEM_ETC_DEFAULT/default-permissions.xml
+      rm -rf $SYSTEM_ETC_DEFAULT/opengapps-permissions.xml
       rm -rf $SYSTEM_ETC_PERM/com.google.android.dialer.support.xml
       rm -rf $SYSTEM_ETC_PERM/com.google.android.maps.xml
       rm -rf $SYSTEM_ETC_PERM/com.google.android.media.effects.xml
       rm -rf $SYSTEM_ETC_PERM/privapp-permissions-google.xml
       rm -rf $SYSTEM_ETC_PERM/split-permissions-google.xml
-      rm -rf $SYSTEM_ETC_PREF/preferred-apps
+      rm -rf $SYSTEM_ETC_PREF/google.xml
       rm -rf $SYSTEM_ADDOND/90bit_gapps.sh
       rm -rf $SYSTEM/etc/g.prop
     }
@@ -851,12 +923,13 @@ pre_installed_v28() {
     rm -rf $SYSTEM_ETC_CONFIG/google_build.xml
     rm -rf $SYSTEM_ETC_CONFIG/google_exclusives_enable.xml
     rm -rf $SYSTEM_ETC_CONFIG/google-hiddenapi-package-whitelist.xml
-    rm -rf $SYSTEM_ETC_DEFAULT/default-permissions
+    rm -rf $SYSTEM_ETC_DEFAULT/default-permissions.xml
+    rm -rf $SYSTEM_ETC_DEFAULT/opengapps-permissions.xml
     rm -rf $SYSTEM_ETC_PERM/com.google.android.dialer.support.xml
     rm -rf $SYSTEM_ETC_PERM/com.google.android.maps.xml
     rm -rf $SYSTEM_ETC_PERM/com.google.android.media.effects.xml
     rm -rf $SYSTEM_ETC_PERM/privapp-permissions-google.xml
-    rm -rf $SYSTEM_ETC_PREF/preferred-apps
+    rm -rf $SYSTEM_ETC_PREF/google.xml
     rm -rf $SYSTEM_ADDOND/90bit_gapps.sh
     rm -rf $SYSTEM/etc/g.prop
     rm -rf $SYSTEM/xbin/pm.sh
@@ -891,12 +964,13 @@ pre_installed_v27() {
     rm -rf $SYSTEM_ETC_CONFIG/google.xml
     rm -rf $SYSTEM_ETC_CONFIG/google_build.xml
     rm -rf $SYSTEM_ETC_CONFIG/google_exclusives_enable.xml
-    rm -rf $SYSTEM_ETC_DEFAULT/default-permissions
+    rm -rf $SYSTEM_ETC_DEFAULT/default-permissions.xml
+    rm -rf $SYSTEM_ETC_DEFAULT/opengapps-permissions.xml
     rm -rf $SYSTEM_ETC_PERM/com.google.android.dialer.support.xml
     rm -rf $SYSTEM_ETC_PERM/com.google.android.maps.xml
     rm -rf $SYSTEM_ETC_PERM/com.google.android.media.effects.xml
     rm -rf $SYSTEM_ETC_PERM/privapp-permissions-google.xml
-    rm -rf $SYSTEM_ETC_PREF/preferred-apps
+    rm -rf $SYSTEM_ETC_PREF/google.xml
     rm -rf $SYSTEM_ADDOND/90bit_gapps.sh
     rm -rf $SYSTEM/etc/g.prop
   fi;
@@ -929,11 +1003,12 @@ pre_installed_v25() {
     rm -rf $SYSTEM_ETC_CONFIG/google.xml
     rm -rf $SYSTEM_ETC_CONFIG/google_build.xml
     rm -rf $SYSTEM_ETC_CONFIG/google_exclusives_enable.xml
-    rm -rf $SYSTEM_ETC_DEFAULT/default-permissions
+    rm -rf $SYSTEM_ETC_DEFAULT/default-permissions.xml
+    rm -rf $SYSTEM_ETC_DEFAULT/opengapps-permissions.xml
     rm -rf $SYSTEM_ETC_PERM/com.google.android.dialer.support.xml
     rm -rf $SYSTEM_ETC_PERM/com.google.android.maps.xml
     rm -rf $SYSTEM_ETC_PERM/com.google.android.media.effects.xml
-    rm -rf $SYSTEM_ETC_PREF/preferred-apps
+    rm -rf $SYSTEM_ETC_PREF/google.xml
     rm -rf $SYSTEM_ADDOND/90bit_gapps.sh
     rm -rf $SYSTEM/etc/g.prop
   fi;
@@ -1251,6 +1326,11 @@ sdk_v29_install() {
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_CONFIG/google_build.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_CONFIG/google_exclusives_enable.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_CONFIG/google-hiddenapi-package-whitelist.xml";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_CONFIG/pixel_experience_2017.xml";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_CONFIG/pixel_experience_2018.xml";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_CONFIG/pixel_experience_2019_midyear.xml";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_CONFIG/pixel_experience_2019.xml";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_CONFIG/whitelist_com.android.omadm.service.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM/etc/g.prop";
     }
     # end selinux method
@@ -1475,15 +1555,15 @@ sdk_v28_install() {
     }
 
     selinux_context_se6() {
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_DEFAULT/default-permissions";
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_DEFAULT/default-permissions/default-permissions.xml";
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_DEFAULT/default-permissions/opengapps-permissions.xml";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_DEFAULT";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_DEFAULT/default-permissions.xml";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_DEFAULT/opengapps-permissions.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PERM/com.google.android.dialer.support.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PERM/com.google.android.maps.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PERM/com.google.android.media.effects.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PERM/privapp-permissions-google.xml";
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PREF/preferred-apps";
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PREF/preferred-apps/google.xml";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PREF";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PREF/google.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_CONFIG/dialer_experience.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_CONFIG/google.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_CONFIG/google_build.xml";
@@ -1706,15 +1786,15 @@ sdk_v27_install() {
     }
 
     selinux_context_se6() {
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_DEFAULT/default-permissions";
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_DEFAULT/default-permissions/default-permissions.xml";
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_DEFAULT/default-permissions/opengapps-permissions.xml";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_DEFAULT";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_DEFAULT/default-permissions.xml";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_DEFAULT/opengapps-permissions.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PERM/com.google.android.dialer.support.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PERM/com.google.android.maps.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PERM/com.google.android.media.effects.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PERM/privapp-permissions-google.xml";
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PREF/preferred-apps";
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PREF/preferred-apps/google.xml";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PREF";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PREF/google.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_CONFIG/dialer_experience.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_CONFIG/google.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_CONFIG/google_build.xml";
@@ -1940,14 +2020,14 @@ sdk_v25_install() {
     }
 
     selinux_context_se6() {
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_DEFAULT/default-permissions";
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_DEFAULT/default-permissions/default-permissions.xml";
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_DEFAULT/default-permissions/opengapps-permissions.xml";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_DEFAULT";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_DEFAULT/default-permissions.xml";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_DEFAULT/opengapps-permissions.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PERM/com.google.android.dialer.support.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PERM/com.google.android.maps.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PERM/com.google.android.media.effects.xml";
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PREF/preferred-apps";
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PREF/preferred-apps/google.xml";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PREF";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PREF/google.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_CONFIG/dialer_experience.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_CONFIG/google.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_CONFIG/google_build.xml";
@@ -2189,12 +2269,12 @@ opt_v28() {
   fi;
 }
 
-# Delete existing GMS Doze entry from all XML files.
+# Delete existing GMS Doze entry from all XML files
 # This function should be execute before 'post_install()' function
 opt_v29() {
   if [ "$android_sdk" = "$supported_sdk_v29" ]; then
-    find /system/etc/permissions/ -type f -exec sed -i '/com.google.android.gms/d' {} \;
-    find /system/etc/sysconfig/ -type f -exec sed -i '/com.google.android.gms/d' {} \;
+    sed -i '/allow-in-power-save package="com.google.android.gms"/d' /system/etc/permissions/*.xml
+    sed -i '/allow-in-power-save package="com.google.android.gms"/d' /system/etc/sysconfig/*.xml
   fi;
 }
 
@@ -2301,6 +2381,17 @@ cts_patch_system() {
     insert_line $SYSTEM/build.prop "$CTS_SYSTEM_BUILD_SEC_PATCH" after 'ro.build.version.release=' "$CTS_SYSTEM_BUILD_SEC_PATCH";
   else
     echo "ERROR: Unable to find target property 'ro.build.version.security_patch'" >> $TARGET_SYSTEM;
+  fi;
+  # Build type
+  if [ -n "$(cat $SYSTEM/build.prop | grep ro.build.type=userdebug)" ]; then
+    grep -v "$CTS_DEFAULT_SYSTEM_BUILD_TYPE" $SYSTEM/build.prop > $TMP/build.prop
+    rm -rf $SYSTEM/build.prop
+    cp -f $TMP/build.prop $SYSTEM/build.prop
+    chmod 0644 $SYSTEM/build.prop
+    rm -rf $TMP/build.prop
+    insert_line $SYSTEM/build.prop "$CTS_SYSTEM_BUILD_TYPE" after 'ro.build.date.utc=' "$CTS_SYSTEM_BUILD_TYPE";
+  else
+    echo "ERROR: Unable to find target property with type 'userdebug'" >> $TARGET_SYSTEM;
   fi;
 }
 
@@ -2445,21 +2536,24 @@ function pre_install() {
   clean_logs;
   logd;
   on_sdk;
-  on_platform;
-  build_platform;
   on_partition_check;
-  early_mount;
   set_mount;
+  early_mount;
   mount_part;
   remount_part;
   system_layout;
-  profile;
+  boot_SAR;
+  boot_AB;
+  boot_A;
   on_AB;
   mount_stat;
+  profile;
   on_version_check;
   check_sdk;
   check_version;
   on_platform_check;
+  on_platform;
+  build_platform;
   check_platform;
   clean_inst;
   opt_v29;
