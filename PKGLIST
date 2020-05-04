@@ -14,9 +14,7 @@ This list is unified across supported Android Versions
 	• GoogleExtShared
 	• MarkupGoogle
 	• SoundPickerPrebuilt
-	• CarrierSetup
 	• ConfigUpdater
-	• GmsCoreSetupPrebuilt
 	• GoogleExtServices
 	• GoogleLoginService
 	• GoogleServicesFramework
@@ -25,4 +23,3 @@ This list is unified across supported Android Versions
 	• GoogleDialer
 	• GoogleMaps
 	• GoogleMediaEffects
-	• Backup script
