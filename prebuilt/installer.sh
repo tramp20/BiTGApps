@@ -7,7 +7,7 @@
 #
 # Build Date      : Friday March 15 11:36:43 IST 2019
 #
-# Updated on      : Monday April 27 01:25:19 IST 2020
+# Updated on      : Wednesday May 27 09:49:32 IST 2020
 #
 # BiTGApps Author : TheHitMan @ xda-developers
 #
@@ -159,7 +159,7 @@ build_defaults() {
 
 # Check vendor availability using its block device
 vendor_fallback() {
-  if ls -l /dev/block/bootdevice/by-name/vendor; then
+  if ( ls -l /dev/block/bootdevice/by-name/vendor ); then
     device_vendorpartition=true
     VENDOR=/vendor
   else
@@ -264,28 +264,21 @@ early_mount() {
 }
 
 # Mount partitions - RO
-mount_part() {
+mdevice_RO() {
   mount -o bind /dev/urandom /dev/random
   if ! is_mounted /data; then
     mount /data
   fi;
   mount -o ro -t auto /cache 2>/dev/null;
-  cache_rw() {
+  mdevice_Cache() {
     mount -o rw,remount -t auto /cache
   }
   mount -o ro -t auto /persist 2>/dev/null;
   vendor_fallback;
   if [ "$device_vendorpartition" = "true" ]; then
     mount -o ro -t auto /vendor
-      vendor_rw() {
+      mdevice_Vendor() {
         mount -o rw,remount -t auto /vendor
-      }
-      block_vendor() {
-        mount -o ro -t auto /dev/block/bootdevice/by-name/vendor /vendor 2>/dev/null;
-        block_vendor_rw() {
-          mount -o rw,remount -t auto /dev/block/bootdevice/by-name/vendor /vendor
-        }
-        block_vendor_rw;
       }
   fi;
   if [ -d /system_root ] && [ -n "$(cat /etc/fstab | grep /system_root)" ]; then
@@ -295,44 +288,59 @@ mount_part() {
   fi;
   if ! is_mounted $ANDROID_ROOT; then
     mount -o ro -t auto $ANDROID_ROOT 2>/dev/null;
-      system_rw() {
+      mdevice_System() {
         mount -o rw,remount -t auto $ANDROID_ROOT
       }
-      block_system() {
-        mount -o ro -t auto /dev/block/bootdevice/by-name/$ANDROID_ROOT $ANDROID_ROOT 2>/dev/null;
-        block_system_rw() {
-          mount -o rw,remount -t auto /dev/block/bootdevice/by-name/$ANDROID_ROOT $ANDROID_ROOT
-        }
-        block_system_rw;
+  fi;
+}
+
+# Re-mount partitions - RW
+mdevice_RW() {
+  for block in system vendor; do
+    for slot in "" _a _b; do
+      blockdev --setrw /dev/block/mapper/$block$slot 2>/dev/null
+    done
+  done
+  mdevice_Cache;
+  if [ "$device_vendorpartition" = "true" ]; then
+    mdevice_Vendor;
+  fi;
+  mdevice_System;
+  mount_apex;
+}
+
+# Mount block - RO
+mblock_RO() {
+  if [ "$device_vendorpartition" = "true" ]; then
+    mount -o ro -t auto /dev/block/bootdevice/by-name/vendor /vendor 2>/dev/null;
+      mblock_Vendor() {
+        mount -o rw,remount -t auto /dev/block/bootdevice/by-name/vendor /vendor
       }
   fi;
+  mount -o ro -t auto /dev/block/bootdevice/by-name/system $ANDROID_ROOT 2>/dev/null;
+  mblock_System() {
+    mount -o rw,remount -t auto /dev/block/bootdevice/by-name/system $ANDROID_ROOT
+  }
   local slot=$(getprop ro.boot.slot_suffix 2>/dev/null)
   if [ "$system_as_root" = "true" ]; then
-    if [ "$slot" = "_a" ] || [ "$slot" = "_b" ]; then
+    if [ "$device_abpartition" == "true" ]; then
       mount -o ro -t auto /dev/block/bootdevice/by-name/system$slot /system
-        system_ab_rw() {
+        mblock_SystemAB() {
           mount -o rw,remount -t auto /dev/block/bootdevice/by-name/system$slot /system
         }
     fi;
   fi;
 }
 
-# Re-mount partitions - RW
-remount_part() {
-  for block in system vendor; do
-    for slot in "" _a _b; do
-      blockdev --setrw /dev/block/mapper/$block$slot 2>/dev/null
-    done
-  done
-  system_rw;
-  block_system;
-  if [ "$device_abpartition" == "true" ]; then
-    system_ab_rw;
+# Mount block - RW
+mblock_RW() {
+  if [ "$device_vendorpartition" = "true" ]; then
+    mblock_Vendor;
   fi;
-  vendor_rw;
-  block_vendor;
-  cache_rw;
-  mount_apex;
+  mblock_System;
+  if [ "$device_abpartition" == "true" ]; then
+    mblock_SystemAB;
+  fi;
 }
 
 # Set installation layout
@@ -346,7 +354,7 @@ system_layout() {
 }
 
 boot_SAR() {
-  if [ "$device_abpartition" == "false" ]; then
+  if [ -n "$(cat /etc/fstab | grep /system_root)" ]; then
     sed -i '/init.${ro.zygote}.rc/a\\import /init.bootlog.rc' /system_root/init.rc
     cp -f $TMP/init.bootlog.rc /system_root/init.bootlog.rc
     chmod 0750 /system_root/init.bootlog.rc
@@ -357,7 +365,7 @@ boot_SAR() {
 }
 
 boot_AB() {
-  if [ "$device_abpartition" == "true" ]; then
+  if [ ! -z "$active_slot" ]; then
     sed -i '/init.${ro.zygote}.rc/a\\import /init.bootlog.rc' /system/init.rc
     cp -f $TMP/init.bootlog.rc /system/init.bootlog.rc
     chmod 0750 /system/init.bootlog.rc
@@ -534,10 +542,6 @@ clean_inst() {
   if [ -e /data/system/users/0/runtime-permissions.xml ]; then
     # Check if permissions were granted to Google Playstore, this permissions should always be set in the file if GApps were installed before
     if ! grep -q "com.android.vending" /data/system/users/*/runtime-permissions.xml; then
-      # Purge the runtime permissions to prevent issues if flashing GApps for the first time on a dirty install
-      rm -rf /data/system/users/*/runtime-permissions.xml
-    fi;
-    if ! grep -q "com.google.android.setupwizard" /data/system/users/*/runtime-permissions.xml; then
       # Purge the runtime permissions to prevent issues if flashing GApps for the first time on a dirty install
       rm -rf /data/system/users/*/runtime-permissions.xml
     fi;
@@ -2500,6 +2504,63 @@ config_info() {
   fi;
 }
 
+# Tools for downloading addon packages
+addon_tools() {
+  # Busybox
+  rm -rf $SYSTEM/xbin/busybox
+  cp -f $TMP/bb/busybox-arm $SYSTEM/xbin/busybox
+  chmod 0755 $SYSTEM/xbin/busybox
+  chcon -h u:object_r:system_file:s0 "$SYSTEM/xbin/busybox";
+  # Curl
+  rm -rf $SYSTEM/xbin/curl
+  cp -f $TMP/curl $SYSTEM/xbin/curl
+  chmod 0755 $SYSTEM/xbin/curl
+  chcon -h u:object_r:system_file:s0 "$SYSTEM/xbin/curl";
+}
+
+# Addon installation script
+addon_inst() {
+  rm -rf $SYSTEM/xbin/addon.sh
+  cp -f $TMP/addon.sh $SYSTEM/xbin/addon.sh
+  chmod 0755 $SYSTEM/xbin/addon.sh
+  chcon -h u:object_r:system_file:s0 "$SYSTEM/xbin/addon.sh";
+}
+
+# Addon OTA survival function
+addon_restore() {
+  ui_print " ";
+  ui_print "Restore Addon Package";
+  if [ -d "/data/data" ]; then
+    device_CleanInstall=false
+  fi;
+  if [ "$device_CleanInstall" = "false" ]; then
+    if [ -f /sdcard/addon/prebuilt_Velvet.tar.gz ]; then
+      ui_print "Assistant";
+      if [ "$android_sdk" = "$supported_sdk_v29" ]; then
+        tar -xzf /sdcard/addon/prebuilt_Velvet.tar.gz -C $SYSTEM/product/priv-app
+      else
+        min_SDK=true
+      fi;
+      if [ "$min_SDK" = "true" ]; then
+        tar -xzf /sdcard/addon/prebuilt_Velvet.tar.gz -C $SYSTEM/priv-app
+      fi;
+    fi;
+    if [ -f /sdcard/addon/prebuilt_Wellbeing.tar.gz ]; then
+      ui_print "Wellbeing";
+      if [ "$android_sdk" = "$supported_sdk_v29" ]; then
+        tar -xzf /sdcard/addon/prebuilt_Wellbeing.tar.gz -C $SYSTEM/product/priv-app
+      else
+        min_SDK=true
+      fi;
+      if [ "$min_SDK" = "true" ]; then
+        tar -xzf /sdcard/addon/prebuilt_Wellbeing.tar.gz -C $SYSTEM/priv-app
+      fi;
+    fi;
+  else
+    ui_print "Skipped";
+  fi;
+}
+
 print_build_info() {
   ui_print "Done";
   ui_print " ";
@@ -2539,8 +2600,10 @@ function pre_install() {
   on_partition_check;
   set_mount;
   early_mount;
-  mount_part;
-  remount_part;
+  mdevice_RO;
+  mdevice_RW;
+  mblock_RO;
+  mblock_RW;
   system_layout;
   boot_SAR;
   boot_AB;
@@ -2614,6 +2677,9 @@ function post_install() {
   selinux_fix;
   sqlite_opt;
   config_info;
+  addon_tools;
+  addon_inst;
+  addon_restore;
   on_installed;
   recovery_cleanup;
 }
