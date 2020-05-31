@@ -8,7 +8,7 @@
 #
 # Build Date      : Friday March 15 11:36:43 IST 2019
 #
-# Updated on      : Wednesday May 27 09:49:32 IST 2020
+# Updated on      : Thursday June 11 10:55:50 IST 2020
 #
 # BiTGApps Author : TheHitMan @ xda-developers
 #
@@ -72,7 +72,7 @@ for f in busybox-arm; do
   unzip -o "$ZIPFILE" "$f" -d "$TMP/bb";
 done
 
-for f in addon.sh curl g.prop init.bootlog.rc installer.sh pm.sh sqlite3 zipalign; do
+for f in addon.sh curl data.prop g.prop init.bootlog.rc installer.sh pm.sh sqlite3 zipalign; do
   unzip -o "$ZIPFILE" "$f" -d "$TMP";
 done
 
