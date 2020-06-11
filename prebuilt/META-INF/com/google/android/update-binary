@@ -66,13 +66,7 @@ ui_print() {
 bb="$TMP/busybox-arm"
 l="$TMP/bin"
 
-for f in busybox-arm; do
-  unzip -o "$ZIPFILE" "$f" -d "$TMP";
-  mkdir $TMP/bb
-  unzip -o "$ZIPFILE" "$f" -d "$TMP/bb";
-done
-
-for f in addon.sh curl data.prop g.prop init.bootlog.rc installer.sh pm.sh sqlite3 zipalign; do
+for f in addon.sh busybox-arm curl data.prop g.prop init.bootlog.rc installer.sh pm.sh sqlite3 zipalign; do
   unzip -o "$ZIPFILE" "$f" -d "$TMP";
 done
 

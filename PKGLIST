@@ -20,6 +20,6 @@ This list is unified across supported Android Versions
 	• GoogleServicesFramework
 	• Phonesky
 	• PrebuiltGmsCore
-	• GoogleDialer
-	• GoogleMaps
-	• GoogleMediaEffects
+	• GoogleDialerFramework
+	• GoogleMapsFramework
+	• GoogleMediaEffectsFramework

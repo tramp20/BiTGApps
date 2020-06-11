@@ -148,13 +148,15 @@ build_defaults() {
   CTS_DEFAULT_SYSTEM_BUILD_TYPE="ro.build.type=";
   CTS_DEFAULT_VENDOR_BUILD_FINGERPRINT="ro.vendor.build.fingerprint=";
   CTS_DEFAULT_VENDOR_BUILD_BOOTIMAGE="ro.bootimage.build.fingerprint=";
+  CTS_DEFAULT_VENDOR_BUILD_SEC_PATCH="ro.vendor.build.security_patch=";
   # CTS patch
-  CTS_SYSTEM_EXT_BUILD_FINGERPRINT="ro.system.build.fingerprint=google/coral/coral:10/QQ2A.200405.005/6254899:user/release-keys";
-  CTS_SYSTEM_BUILD_FINGERPRINT="ro.build.fingerprint=google/coral/coral:10/QQ2A.200405.005/6254899:user/release-keys";
-  CTS_SYSTEM_BUILD_SEC_PATCH="ro.build.version.security_patch=2020-04-05";
+  CTS_SYSTEM_EXT_BUILD_FINGERPRINT="ro.system.build.fingerprint=google/coral/coral:11/RPB1.200504.018/6520161:user/release-keys";
+  CTS_SYSTEM_BUILD_FINGERPRINT="ro.build.fingerprint=google/coral/coral:11/RPB1.200504.018/6520161:user/release-keys";
+  CTS_SYSTEM_BUILD_SEC_PATCH="ro.build.version.security_patch=2020-06-05";
   CTS_SYSTEM_BUILD_TYPE="ro.build.type=user";
-  CTS_VENDOR_BUILD_FINGERPRINT="ro.vendor.build.fingerprint=google/coral/coral:10/QQ2A.200405.005/6254899:user/release-keys";
-  CTS_VENDOR_BUILD_BOOTIMAGE="ro.bootimage.build.fingerprint=google/coral/coral:10/QQ2A.200405.005/6254899:user/release-keys";
+  CTS_VENDOR_BUILD_FINGERPRINT="ro.vendor.build.fingerprint=google/coral/coral:11/RPB1.200504.018/6520161:user/release-keys";
+  CTS_VENDOR_BUILD_BOOTIMAGE="ro.bootimage.build.fingerprint=google/coral/coral:11/RPB1.200504.018/6520161:user/release-keys";
+  CTS_VENDOR_BUILD_SEC_PATCH="ro.vendor.build.security_patch=2020-06-05";
 }
 
 # Set partition and boot slot property
@@ -164,13 +166,20 @@ on_partition_check() {
   dynamic_partitions=`getprop ro.boot.dynamic_partitions`
 }
 
+# Set fstab for getting mount point
+fstab() {
+  filesystem="/etc/fstab"
+  if [ -f "/etc/recovery.fstab" ]; then
+    filesystem="/etc/recovery.fstab"
+  fi;
+}
+
 # Set vendor mount point
 vendor_mnt() {
-  if ( ls -l /dev/block/bootdevice/by-name/vendor ); then
+  device_vendorpartition=false
+  if [ -d /vendor ] && [ -n "$(cat $filesystem | grep /vendor)" ]; then
     device_vendorpartition=true
     VENDOR=/vendor
-  else
-    device_vendorpartition=false
   fi;
   if [ "$dynamic_partitions" == "true" ]; then
     device_vendorpartition=true
@@ -200,7 +209,7 @@ setup_mountpoint() {
 }
 
 mount_apex() {
-  if [ -d /system_root/system ] && [ -n "$(cat /etc/fstab | grep /system_root)" ];
+  if [ -d /system_root/system ] && [ -n "$(cat $filesystem | grep /system_root)" ];
   then
     SYSTEM=/system_root/system
   else
@@ -259,10 +268,10 @@ umount_apex() {
 early_umount() {
   umount_apex;
   umount /data 2>/dev/null;
-  if [ -d /system ] && [ -n "$(cat /etc/fstab | grep /system)" ]; then
+  if [ -d /system ] && [ -n "$(cat $filesystem | grep /system)" ]; then
     umount /system 2>/dev/null;
   fi;
-  if [ -d /system_root ] && [ -n "$(cat /etc/fstab | grep /system_root)" ]; then
+  if [ -d /system_root ] && [ -n "$(cat $filesystem | grep /system_root)" ]; then
     umount /system_root 2>/dev/null;
   fi;
   umount /vendor 2>/dev/null;
@@ -281,34 +290,32 @@ mount_all() {
   if [ "$dynamic_partitions" == "true" ]; then
     # Set mount point for dynamic partition
     ANDROID_ROOT=/system
-    if [ "$system_as_root" == "false" ]; then
-      if [ "$device_abpartition" == "true" ]; then
-        for block in system vendor; do
-          for slot in "" _a _b; do
-            blockdev --setrw /dev/block/mapper/$block$slot 2>/dev/null
-          done
+    if [ "$device_abpartition" == "true" ]; then
+      for block in system vendor; do
+        for slot in "" _a _b; do
+          blockdev --setrw /dev/block/mapper/$block$slot 2>/dev/null
         done
-        local slot=$(getprop ro.boot.slot_suffix 2>/dev/null)
-        mount -o ro -t auto /dev/block/mapper/system$slot $ANDROID_ROOT
-        mount -o rw,remount -t auto /dev/block/mapper/system$slot $ANDROID_ROOT
-        mount -o ro -t auto /dev/block/mapper/vendor$slot $VENDOR
-        mount -o rw,remount -t auto /dev/block/mapper/vendor$slot $VENDOR
-      else
-        for block in system vendor; do
-          blockdev --setrw /dev/block/mapper/$block 2>/dev/null
-        done
-        mount -o ro -t auto /dev/block/mapper/system $ANDROID_ROOT
-        mount -o rw,remount -t auto /dev/block/mapper/system $ANDROID_ROOT
-        mount -o ro -t auto /dev/block/mapper/vendor $VENDOR
-        mount -o rw,remount -t auto /dev/block/mapper/vendor $VENDOR
-      fi;
+      done
+      local slot=$(getprop ro.boot.slot_suffix 2>/dev/null)
+      mount -o ro -t auto /dev/block/mapper/system$slot $ANDROID_ROOT
+      mount -o rw,remount -t auto /dev/block/mapper/system$slot $ANDROID_ROOT
+      mount -o ro -t auto /dev/block/mapper/vendor$slot $VENDOR
+      mount -o rw,remount -t auto /dev/block/mapper/vendor$slot $VENDOR
+    else
+      for block in system vendor; do
+        blockdev --setrw /dev/block/mapper/$block 2>/dev/null
+      done
+      mount -o ro -t auto /dev/block/mapper/system $ANDROID_ROOT
+      mount -o rw,remount -t auto /dev/block/mapper/system $ANDROID_ROOT
+      mount -o ro -t auto /dev/block/mapper/vendor $VENDOR
+      mount -o rw,remount -t auto /dev/block/mapper/vendor $VENDOR
     fi;
   else
     if [ "$device_vendorpartition" == "true" ]; then
       mount -o ro -t auto $VENDOR
       mount -o rw,remount -t auto $VENDOR
     fi;
-    if [ -d /system_root ] && [ -n "$(cat /etc/fstab | grep /system_root)" ]; then
+    if [ -d /system_root ] && [ -n "$(cat $filesystem | grep /system_root)" ]; then
       ANDROID_ROOT=/system_root
     else
       ANDROID_ROOT=/system
@@ -349,7 +356,7 @@ system_layout() {
     # Set installation layout for dynamic partition
     SYSTEM=$ANDROID_ROOT
   else
-    if [ -f /system_root/system/build.prop ] && [ -n "$(cat /etc/fstab | grep /system_root)" ];
+    if [ -f /system_root/system/build.prop ] && [ -n "$(cat $filesystem | grep /system_root)" ];
     then
       SYSTEM=/system_root/system
     else
@@ -359,7 +366,7 @@ system_layout() {
 }
 
 boot_SAR() {
-  if [ -n "$(cat /etc/fstab | grep /system_root)" ]; then
+  if [ -n "$(cat $filesystem | grep /system_root)" ]; then
     sed -i '/init.${ro.zygote}.rc/a\\import /init.bootlog.rc' /system_root/init.rc
     cp -f $TMP/init.bootlog.rc /system_root/init.bootlog.rc
     chmod 0750 /system_root/init.bootlog.rc
@@ -424,6 +431,7 @@ on_mount_failed() {
   cd /cache/bitgapps
   cp -f $TMP/recovery.log /cache/bitgapps/recovery.log 2>/dev/null;
   cp -f /etc/fstab /cache/bitgapps/fstab 2>/dev/null;
+  cp -f /etc/recovery.fstab /cache/bitgapps/recovery.fstab 2>/dev/null;
   tar -cz -f "$TMP/bitgapps_debug_failed_logs.tar.gz" *
   cp -f $TMP/bitgapps_debug_failed_logs.tar.gz $INTERNAL/bitgapps_debug_failed_logs.tar.gz
   # Checkout log path
@@ -438,6 +446,7 @@ on_install_failed() {
   cd /cache/bitgapps
   cp -f $TMP/recovery.log /cache/bitgapps/recovery.log 2>/dev/null;
   cp -f /etc/fstab /cache/bitgapps/fstab 2>/dev/null;
+  cp -f /etc/recovery.fstab /cache/bitgapps/recovery.fstab 2>/dev/null;
   cp -f $SYSTEM/build.prop /cache/bitgapps/build.prop 2>/dev/null;
   if [ "$device_vendorpartition" == "true" ]; then
     cp -f $VENDOR/build.prop /cache/bitgapps/build2.prop 2>/dev/null;
@@ -459,6 +468,7 @@ on_install_complete() {
   cd /cache/bitgapps
   cp -f $TMP/recovery.log /cache/bitgapps/recovery.log 2>/dev/null;
   cp -f /etc/fstab /cache/bitgapps/fstab 2>/dev/null;
+  cp -f /etc/recovery.fstab /cache/bitgapps/recovery.fstab 2>/dev/null;
   cp -f $SYSTEM/build.prop /cache/bitgapps/build.prop 2>/dev/null;
   if [ "$device_vendorpartition" == "true" ]; then
     cp -f $VENDOR/build.prop /cache/bitgapps/build2.prop 2>/dev/null;
@@ -485,27 +495,32 @@ unmount_all() {
   if [ "$device_vendorpartition" == "true" ]; then
     if [ "$device_abpartition" == "true" ]; then
       mount -o ro $VENDOR
+    else
+      umount $VENDOR
     fi;
-    umount $VENDOR
   fi;
   umount /persist
   umount /dev/random
 }
 
 cleanup() {
+  rm -rf $TMP/addon.sh
   rm -rf $TMP/bin
-  rm -rf $TMP/out
-  rm -rf $TMP/unzip
-  rm -rf $TMP/zip
   rm -rf $TMP/bitgapps_debug_complete_logs.tar.gz
   rm -rf $TMP/bitgapps_debug_failed_logs.tar.gz
   rm -rf $TMP/busybox-arm
+  rm -rf $TMP/bb
+  rm -rf $TMP/curl
+  rm -rf $TMP/data.prop
   rm -rf $TMP/g.prop
+  rm -rf $TMP/init.bootlog.rc
   rm -rf $TMP/installer.sh
+  rm -rf $TMP/out
   rm -rf $TMP/pm.sh
-  rm -rf $TMP/recovery.log
   rm -rf $TMP/sqlite3
+  rm -rf $TMP/unzip
   rm -rf $TMP/updater
+  rm -rf $TMP/zip
   rm -rf $TMP/zipalign
 }
 
@@ -699,11 +714,10 @@ check_platform() {
 
 # Delete listed packages permissions
 clean_inst() {
+  SYSTEM_DATA=false
   # Check if system is already booted with GApps installed
   if [ "$android_data" == "$supported_target" ]; then
     SYSTEM_DATA=true
-  else
-    SYSTEM_DATA=false
   fi;
   if [ "$SYSTEM_DATA" == "false" ]; then
     # Did this 6.0+ system already boot and generated runtime permissions
@@ -2547,6 +2561,17 @@ cts_patch_system() {
 # Apply safetynet patch
 cts_patch_vendor() {
   if [ "$device_vendorpartition" == "true" ]; then
+    # Build security patch
+    if [ -n "$(cat $VENDOR/build.prop | grep ro.vendor.build.security_patch)" ]; then
+      grep -v "$CTS_DEFAULT_VENDOR_BUILD_SEC_PATCH" $VENDOR/build.prop > $TMP/build.prop
+      rm -rf $VENDOR/build.prop
+      cp -f $TMP/build.prop $VENDOR/build.prop
+      chmod 0644 $VENDOR/build.prop
+      rm -rf $TMP/build.prop
+      insert_line $VENDOR/build.prop "$CTS_VENDOR_BUILD_SEC_PATCH" after 'ro.product.first_api_level=' "$CTS_VENDOR_BUILD_SEC_PATCH";
+    else
+      echo "ERROR: Unable to find target property 'ro.vendor.build.security_patch'" >> $TARGET_VENDOR;
+    fi;
     # Build fingerprint
     if [ -n "$(cat $VENDOR/build.prop | grep ro.vendor.build.fingerprint)" ]; then
       grep -v "$CTS_DEFAULT_VENDOR_BUILD_FINGERPRINT" $VENDOR/build.prop > $TMP/build.prop
@@ -2651,10 +2676,6 @@ config_info() {
 
 # Addon installation script
 addon_inst() {
-  rm -rf $SYSTEM/bin/busybox
-  cp -f $TMP/bb/busybox-arm $SYSTEM/bin/busybox
-  chmod 0755 $SYSTEM/bin/busybox
-  chcon -h u:object_r:system_file:s0 "$SYSTEM/bin/busybox";
   rm -rf $SYSTEM/bin/curl
   cp -f $TMP/curl $SYSTEM/bin/curl
   chmod 0755 $SYSTEM/bin/curl
@@ -2667,51 +2688,37 @@ addon_inst() {
 
 # Addon OTA survival function
 addon_restore() {
-  ui_print " ";
-  ui_print "Restore Addon Package";
   if [ "$SYSTEM_DATA" == "true" ]; then
-    if [ -f /sdcard/addon/prebuilt_Velvet.tar.gz ]; then
+    if [ -f $INTERNAL/addon/VelvetPrebuilt.tar.xz ]; then
       if [ "$android_sdk" == "$supported_sdk_v29" ]; then
-        tar -xzf /sdcard/addon/prebuilt_Velvet.tar.gz -C $SYSTEM/product/priv-app
+        tar -xf $INTERNAL/addon/VelvetPrebuilt.tar.xz -C $SYSTEM/product/priv-app
         chmod 0755 $SYSTEM/product/priv-app/Velvet
         chmod 0644 $SYSTEM/product/priv-app/Velvet/Velvet.apk
         chcon -h u:object_r:system_file:s0 "$SYSTEM/product/priv-app/Velvet";
         chcon -h u:object_r:system_file:s0 "$SYSTEM/product/priv-app/Velvet/Velvet.apk";
       else
-        min_SDK=true
-      fi;
-      if [ "$min_SDK" == "true" ]; then
-        tar -xzf /sdcard/addon/prebuilt_Velvet.tar.gz -C $SYSTEM/priv-app
+        tar -xf $INTERNAL/addon/VelvetPrebuilt.tar.xz -C $SYSTEM/priv-app
         chmod 0755 $SYSTEM/priv-app/Velvet
         chmod 0644 $SYSTEM/priv-app/Velvet/Velvet.apk
         chcon -h u:object_r:system_file:s0 "$SYSTEM/priv-app/Velvet";
         chcon -h u:object_r:system_file:s0 "$SYSTEM/priv-app/Velvet/Velvet.apk";
       fi;
-      addon_Assistant=true
     fi;
-    if [ -f /sdcard/addon/prebuilt_Wellbeing.tar.gz ]; then
+    if [ -f $INTERNAL/addon/WellbeingPrebuilt.tar.xz ]; then
       if [ "$android_sdk" == "$supported_sdk_v29" ]; then
-        tar -xzf /sdcard/addon/prebuilt_Wellbeing.tar.gz -C $SYSTEM/product/priv-app
+        tar -xf $INTERNAL/addon/WellbeingPrebuilt.tar.xz -C $SYSTEM/product/priv-app
         chmod 0755 $SYSTEM/product/priv-app/WellbeingPrebuilt
         chmod 0644 $SYSTEM/product/priv-app/WellbeingPrebuilt/WellbeingPrebuilt.apk
         chcon -h u:object_r:system_file:s0 "$SYSTEM/product/priv-app/WellbeingPrebuilt";
         chcon -h u:object_r:system_file:s0 "$SYSTEM/product/priv-app/WellbeingPrebuilt/WellbeingPrebuilt.apk";
-      else
-        min_SDK=true
       fi;
-      if [ "$min_SDK" == "true" ]; then
-        tar -xzf /sdcard/addon/prebuilt_Wellbeing.tar.gz -C $SYSTEM/priv-app
+      if [ "$android_sdk" == "$supported_sdk_v28" ]; then
+        tar -xf $INTERNAL/addon/WellbeingPrebuilt.tar.xz -C $SYSTEM/priv-app
         chmod 0755 $SYSTEM/priv-app/WellbeingPrebuilt
         chmod 0644 $SYSTEM/priv-app/WellbeingPrebuilt/WellbeingPrebuilt.apk
         chcon -h u:object_r:system_file:s0 "$SYSTEM/priv-app/WellbeingPrebuilt";
         chcon -h u:object_r:system_file:s0 "$SYSTEM/priv-app/WellbeingPrebuilt/WellbeingPrebuilt.apk";
       fi;
-      addon_Wellbeing=true
-    fi;
-    if [ "$addon_Assistant" == "true" ] || [ "$addon_Wellbeing" == "true" ]; then
-      ui_print "Restored";
-    else
-      ui_print "Skipped";
     fi;
   fi;
 }
@@ -2753,6 +2760,7 @@ function pre_install() {
   logd;
   on_sdk;
   on_partition_check;
+  fstab;
   set_mount;
   early_umount;
   mount_all;
@@ -2809,7 +2817,7 @@ function post_install() {
   system_pathmap;
   recovery_actions;
   mk_component;
-  pre_installed;
+  # pre_installed;
   pre_installed_v29;
   pre_installed_v28;
   pre_installed_v27;
@@ -2835,7 +2843,7 @@ function post_install() {
   # sqlite_opt;
   addon_inst;
   addon_restore;
-  config_info;
+  # config_info;
   on_installed;
   recovery_cleanup;
 }
