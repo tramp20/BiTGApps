@@ -8,7 +8,7 @@
 #
 # Build Date      : Friday March 15 11:36:43 IST 2019
 #
-# Updated on      : Thursday June 11 10:55:50 IST 2020
+# Updated on      : Monday July 20 07:55:10 IST 2020
 #
 # BiTGApps Author : TheHitMan @ xda-developers
 #
@@ -52,6 +52,8 @@ fi;
 
 # Set environmental variables in the global environment
 export ZIPFILE="$3"
+export ZIPTYPE=""
+export PKG=""
 export OUTFD="$OUTFD"
 export TMP="/tmp"
 export INTERNAL="/sdcard"
@@ -66,13 +68,22 @@ ui_print() {
 bb="$TMP/busybox-arm"
 l="$TMP/bin"
 
-for f in addon.sh busybox-arm curl data.prop g.prop init.bootlog.rc installer.sh pm.sh sqlite3 zipalign; do
-  unzip -o "$ZIPFILE" "$f" -d "$TMP";
-done
-
-for f in busybox-arm installer.sh sqlite3 zipalign; do
-  chmod +x "$TMP/$f";
-done
+# Extract zip files, according to variable $ZIPTYPE
+if [ "$ZIPTYPE" == "addon" ]; then
+  for f in busybox-arm installer.sh; do
+    unzip -o "$ZIPFILE" "$f" -d "$TMP";
+  done
+  for f in busybox-arm installer.sh; do
+    chmod +x "$TMP/$f";
+  done
+else
+  for f in addon.sh busybox-arm curl data.prop g.prop init.bootlog.rc installer.sh pm.sh sqlite3 zipalign; do
+    unzip -o "$ZIPFILE" "$f" -d "$TMP";
+  done
+  for f in busybox-arm installer.sh sqlite3 zipalign; do
+    chmod +x "$TMP/$f";
+  done
+fi;
 
 ui_print "***********************************************";
 ui_print "Custom GApps Package : BiTGApps                ";

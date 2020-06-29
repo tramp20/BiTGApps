@@ -105,124 +105,6 @@ case "$1" in
     rm -rf $SYS/priv-app/ExtServices
     rm -rf $SYS/priv-app/ManagedProvisioning
     rm -rf $SYS/priv-app/Provision
-    rm -rf $SYS/app/GoogleCalendarSyncAdapter
-    rm -rf $SYS/app/GoogleContactsSyncAdapter
-    rm -rf $SYS/app/ExtShared
-    rm -rf $SYS/app/GoogleExtShared
-    rm -rf $SYS/app/GooglePrintRecommendationService
-    rm -rf $SYS/app/MarkupGoogle
-    rm -rf $SYS/app/SoundPickerPrebuilt
-    rm -rf $SYS/priv-app/CarrierSetup
-    rm -rf $SYS/priv-app/ConfigUpdater
-    rm -rf $SYS/priv-app/GmsCoreSetupPrebuilt
-    rm -rf $SYS/priv-app/ExtServices
-    rm -rf $SYS/priv-app/GoogleExtServices
-    rm -rf $SYS/priv-app/GoogleExtServicesPrebuilt
-    rm -rf $SYS/priv-app/GoogleServicesFramework
-    rm -rf $SYS/priv-app/Phonesky
-    rm -rf $SYS/priv-app/PrebuiltGmsCoreQt
-    rm -rf $SYS/framework/com.google.android.dialer.support.jar
-    rm -rf $SYS/framework/com.google.android.maps.jar
-    rm -rf $SYS/framework/com.google.android.media.effects.jar
-    rm -rf $SYS/lib/libsketchology_native.so
-    rm -rf $SYS/lib64/libjni_latinimegoogle.so
-    rm -rf $SYS/lib64/libsketchology_native.so
-    rm -rf $SYS/etc/sysconfig/dialer_experience.xml
-    rm -rf $SYS/etc/sysconfig/google.xml
-    rm -rf $SYS/etc/sysconfig/google_build.xml
-    rm -rf $SYS/etc/sysconfig/google_vr_build.xml
-    rm -rf $SYS/etc/sysconfig/google_exclusives_enable.xml
-    rm -rf $SYS/etc/sysconfig/google-hiddenapi-package-whitelist.xml
-    rm -rf $SYS/etc/sysconfig/nexus.xml
-    rm -rf $SYS/etc/sysconfig/nga.xml
-    rm -rf $SYS/etc/sysconfig/pixel_experience_2017.xml
-    rm -rf $SYS/etc/sysconfig/pixel_experience_2018.xml
-    rm -rf $SYS/etc/sysconfig/pixel_experience_2019_midyear.xml
-    rm -rf $SYS/etc/sysconfig/pixel_experience_2019.xml
-    rm -rf $SYS/etc/sysconfig/whitelist_com.android.omadm.service.xml
-    rm -rf $SYS/etc/default-permissions/default-permissions.xml
-    rm -rf $SYS/etc/default-permissions/opengapps-permissions.xml
-    rm -rf $SYS/etc/permissions/com.google.android.dialer.support.xml
-    rm -rf $SYS/etc/permissions/com.google.android.maps.xml
-    rm -rf $SYS/etc/permissions/com.google.android.media.effects.xml
-    rm -rf $SYS/etc/permissions/GoogleExtServices_permissions.xml
-    rm -rf $SYS/etc/permissions/GooglePermissionController_permissions.xml
-    rm -rf $SYS/etc/permissions/privapp-permissions-google.xml
-    rm -rf $SYS/etc/permissions/privapp-permissions-google-p.xml
-    rm -rf $SYS/etc/permissions/privapp-permissions-google-ps.xml
-    rm -rf $SYS/etc/permissions/split-permissions-google.xml
-    rm -rf $SYS/etc/preferred-apps/google.xml
-    rm -rf $SYS/etc/g.prop
-    rm -rf $SYS/product/app/arcore
-    rm -rf $SYS/product/app/CalculatorGooglePrebuilt
-    rm -rf $SYS/product/app/CalendarGooglePrebuilt
-    rm -rf $SYS/product/app/Chrome
-    rm -rf $SYS/product/app/GoogleContacts
-    rm -rf $SYS/product/app/GoogleContactsSyncAdapter
-    rm -rf $SYS/product/app/GoogleTTS
-    rm -rf $SYS/product/app/LatinIMEGooglePrebuilt
-    rm -rf $SYS/product/app/LocationHistoryPrebuilt
-    rm -rf $SYS/product/app/MarkupGoogle
-    rm -rf $SYS/product/app/NgaResources
-    rm -rf $SYS/product/app/PrebuiltBugle
-    rm -rf $SYS/product/app/Photos
-    rm -rf $SYS/product/app/PrebuiltDeskClockGoogle
-    rm -rf $SYS/product/app/SoundPickerPrebuilt
-    rm -rf $SYS/product/app/TrichromeLibrary
-    rm -rf $SYS/product/app/talkback
-    rm -rf $SYS/product/app/WebViewGoogle
-    rm -rf $SYS/product/priv-app/AndroidMigratePrebuilt
-    rm -rf $SYS/product/priv-app/AndroidPlatformServices
-    rm -rf $SYS/product/priv-app/CarrierServices
-    rm -rf $SYS/product/priv-app/ConfigUpdater
-    rm -rf $SYS/product/priv-app/ConnMetrics
-    rm -rf $SYS/product/priv-app/GoogleDialer
-    rm -rf $SYS/product/priv-app/GoogleFeedback
-    rm -rf $SYS/product/priv-app/GoogleOneTimeInitializer
-    rm -rf $SYS/product/priv-app/GooglePartnerSetup
-    rm -rf $SYS/product/priv-app/GoogleServicesFramework
-    rm -rf $SYS/product/priv-app/Phonesky
-    rm -rf $SYS/product/priv-app/PixelSetupWizard
-    rm -rf $SYS/product/priv-app/PrebuiltGmsCoreQt
-    rm -rf $SYS/product/priv-app/RecorderPrebuilt
-    rm -rf $SYS/product/priv-app/SetupWizardPrebuilt
-    rm -rf $SYS/product/priv-app/TipsPrebuilt
-    rm -rf $SYS/product/priv-app/TurboPrebuilt
-    rm -rf $SYS/product/priv-app/Velvet
-    rm -rf $SYS/product/priv-app/WallpaperPickerGoogleRelease
-    rm -rf $SYS/product/priv-app/WellbeingPrebuilt
-    rm -rf $SYS/product/framework/com.google.android.dialer.support.jar
-    rm -rf $SYS/product/framework/com.google.android.maps.jar
-    rm -rf $SYS/product/framework/com.google.android.media.effects.jar
-    rm -rf $SYS/product/lib/libbarhopper.so
-    rm -rf $SYS/product/lib/libsketchology_native.so
-    rm -rf $SYS/product/lib64/libbarhopper.so
-    rm -rf $SYS/product/lib64/libsketchology_native.so
-    rm -rf $SYS/product/etc/sysconfig/dialer_experience.xml
-    rm -rf $SYS/product/etc/sysconfig/google.xml
-    rm -rf $SYS/product/etc/sysconfig/google_build.xml
-    rm -rf $SYS/product/etc/sysconfig/google_vr_build.xml
-    rm -rf $SYS/product/etc/sysconfig/google_exclusives_enable.xml
-    rm -rf $SYS/product/etc/sysconfig/google-hiddenapi-package-whitelist.xml
-    rm -rf $SYS/product/etc/sysconfig/nexus.xml
-    rm -rf $SYS/product/etc/sysconfig/nga.xml
-    rm -rf $SYS/product/etc/sysconfig/pixel_experience_2017.xml
-    rm -rf $SYS/product/etc/sysconfig/pixel_experience_2018.xml
-    rm -rf $SYS/product/etc/sysconfig/pixel_experience_2019_midyear.xml
-    rm -rf $SYS/product/etc/sysconfig/pixel_experience_2019.xml
-    rm -rf $SYS/product/etc/sysconfig/whitelist_com.android.omadm.service.xml
-    rm -rf $SYS/product/etc/default-permissions/default-permissions.xml
-    rm -rf $SYS/product/etc/default-permissions/opengapps-permissions.xml
-    rm -rf $SYS/product/etc/permissions/com.google.android.dialer.support.xml
-    rm -rf $SYS/product/etc/permissions/com.google.android.maps.xml
-    rm -rf $SYS/product/etc/permissions/com.google.android.media.effects.xml
-    rm -rf $SYS/product/etc/permissions/GoogleExtServices_permissions.xml
-    rm -rf $SYS/product/etc/permissions/GooglePermissionController_permissions.xml
-    rm -rf $SYS/product/etc/permissions/privapp-permissions-google.xml
-    rm -rf $SYS/product/etc/permissions/privapp-permissions-google-p.xml
-    rm -rf $SYS/product/etc/permissions/privapp-permissions-google-ps.xml
-    rm -rf $SYS/product/etc/permissions/split-permissions-google.xml
-    rm -rf $SYS/product/etc/preferred-apps/google.xml
   ;;
   post-restore)
     # Stub
@@ -234,7 +116,7 @@ case "$1" in
     if [ "$API" -ge "26" ]; then # Android 8.0+ uses 0600 for its permission on build.prop
       chmod 600 "$SYS/build.prop"
     fi
-    if [ "$API" = "27" ] || [ "$API" = "25" ]; then
+    if [ "$API" == "27" ] || [ "$API" == "25" ]; then
       mkdir $SYS/app/FaceLock/lib
       mkdir $SYS/app/FaceLock/lib/arm64
       chmod 0755 $SYS/app/FaceLock/lib

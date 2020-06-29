@@ -7,7 +7,7 @@
 #
 # Build Date      : Friday March 15 11:36:43 IST 2019
 #
-# Updated on      : Thursday June 11 10:55:50 IST 2020
+# Updated on      : Monday July 20 07:55:10 IST 2020
 #
 # BiTGApps Author : TheHitMan @ xda-developers
 #
@@ -141,6 +141,12 @@ build_defaults() {
   CONFIG="/cache/bitgapps/config-setupwizard.log";
   TARGET_SYSTEM="/cache/bitgapps/cts-system.log";
   TARGET_VENDOR="/cache/bitgapps/cts-vendor.log";
+  bootlog_SAR="/cache/bitgapps/init-SAR.log";
+  bootlog_AB="/cache/bitgapps/init-AB.log";
+  bootlog_A="/cache/bitgapps/init-A.log";
+  bootlog_SYS="/cache/bitgapps/init-SYS.log";
+  OPTv28="/cache/bitgapps/gms_opt_v28.log";
+  OPTv29="/cache/bitgapps/gms_opt_v29.log";
   # CTS defaults
   CTS_DEFAULT_SYSTEM_EXT_BUILD_FINGERPRINT="ro.system.build.fingerprint=";
   CTS_DEFAULT_SYSTEM_BUILD_FINGERPRINT="ro.build.fingerprint=";
@@ -150,13 +156,13 @@ build_defaults() {
   CTS_DEFAULT_VENDOR_BUILD_BOOTIMAGE="ro.bootimage.build.fingerprint=";
   CTS_DEFAULT_VENDOR_BUILD_SEC_PATCH="ro.vendor.build.security_patch=";
   # CTS patch
-  CTS_SYSTEM_EXT_BUILD_FINGERPRINT="ro.system.build.fingerprint=google/coral/coral:11/RPB1.200504.018/6520161:user/release-keys";
-  CTS_SYSTEM_BUILD_FINGERPRINT="ro.build.fingerprint=google/coral/coral:11/RPB1.200504.018/6520161:user/release-keys";
-  CTS_SYSTEM_BUILD_SEC_PATCH="ro.build.version.security_patch=2020-06-05";
+  CTS_SYSTEM_EXT_BUILD_FINGERPRINT="ro.system.build.fingerprint=google/coral/coral:10/QQ2A.200405.005/6254899:user/release-keys";
+  CTS_SYSTEM_BUILD_FINGERPRINT="ro.build.fingerprint=google/coral/coral:10/QQ2A.200405.005/6254899:user/release-keys";
+  CTS_SYSTEM_BUILD_SEC_PATCH="ro.build.version.security_patch=2020-04-05";
   CTS_SYSTEM_BUILD_TYPE="ro.build.type=user";
-  CTS_VENDOR_BUILD_FINGERPRINT="ro.vendor.build.fingerprint=google/coral/coral:11/RPB1.200504.018/6520161:user/release-keys";
-  CTS_VENDOR_BUILD_BOOTIMAGE="ro.bootimage.build.fingerprint=google/coral/coral:11/RPB1.200504.018/6520161:user/release-keys";
-  CTS_VENDOR_BUILD_SEC_PATCH="ro.vendor.build.security_patch=2020-06-05";
+  CTS_VENDOR_BUILD_FINGERPRINT="ro.vendor.build.fingerprint=google/coral/coral:10/QQ2A.200405.005/6254899:user/release-keys";
+  CTS_VENDOR_BUILD_BOOTIMAGE="ro.bootimage.build.fingerprint=google/coral/coral:10/QQ2A.200405.005/6254899:user/release-keys";
+  CTS_VENDOR_BUILD_SEC_PATCH="ro.vendor.build.security_patch=2020-04-05";
 }
 
 # Set partition and boot slot property
@@ -177,11 +183,7 @@ fstab() {
 # Set vendor mount point
 vendor_mnt() {
   device_vendorpartition=false
-  if [ -d /vendor ] && [ -n "$(cat $filesystem | grep /vendor)" ]; then
-    device_vendorpartition=true
-    VENDOR=/vendor
-  fi;
-  if [ "$dynamic_partitions" == "true" ]; then
+  if [ -d /vendor ] && [ -n "$(cat /etc/fstab | grep /vendor)" ]; then
     device_vendorpartition=true
     VENDOR=/vendor
   fi;
@@ -198,6 +200,14 @@ set_mount() {
   fi;
 }
 
+# Detect dynamic partition layout https://source.android.com/devices/tech/ota/dynamic_partitions/implement
+super_partition() {
+  device_superpartition=false
+  if [ "$dynamic_partitions" == "true" ]; then
+    device_superpartition=true
+  fi;
+}
+
 is_mounted() { mount | grep -q " $1 "; }
 
 setup_mountpoint() {
@@ -209,7 +219,7 @@ setup_mountpoint() {
 }
 
 mount_apex() {
-  if [ -d /system_root/system ] && [ -n "$(cat $filesystem | grep /system_root)" ];
+  if [ -d /system_root/system ] && [ -n "$(cat /etc/fstab | grep /system_root)" ];
   then
     SYSTEM=/system_root/system
   else
@@ -268,83 +278,79 @@ umount_apex() {
 early_umount() {
   umount_apex;
   umount /data 2>/dev/null;
-  if [ -d /system ] && [ -n "$(cat $filesystem | grep /system)" ]; then
+  if [ -d /system ] && [ -n "$(cat /etc/fstab | grep /system)" ]; then
     umount /system 2>/dev/null;
   fi;
-  if [ -d /system_root ] && [ -n "$(cat $filesystem | grep /system_root)" ]; then
+  if [ -d /system_root ] && [ -n "$(cat /etc/fstab | grep /system_root)" ]; then
     umount /system_root 2>/dev/null;
   fi;
   umount /vendor 2>/dev/null;
+  umount /product 2>/dev/null;
 }
 
 # Mount partitions
 mount_all() {
+  vendor_mnt;
   mount -o bind /dev/urandom /dev/random
-  if ! is_mounted /data; then
-    mount /data
-  fi;
+  mount /data
   mount -o ro -t auto /cache 2>/dev/null;
   mount -o rw,remount -t auto /cache
   mount -o ro -t auto /persist 2>/dev/null;
-  vendor_mnt;
   if [ "$dynamic_partitions" == "true" ]; then
     # Set mount point for dynamic partition
     ANDROID_ROOT=/system
     if [ "$device_abpartition" == "true" ]; then
       for block in system vendor; do
         for slot in "" _a _b; do
-          blockdev --setrw /dev/block/mapper/$block$slot 2>/dev/null
+          blockdev --setrw /dev/block/mapper/$block$slot 2>/dev/null;
         done
       done
       local slot=$(getprop ro.boot.slot_suffix 2>/dev/null)
-      mount -o ro -t auto /dev/block/mapper/system$slot $ANDROID_ROOT
+      mount -o ro -t auto /dev/block/mapper/system$slot $ANDROID_ROOT 2>/dev/null;
       mount -o rw,remount -t auto /dev/block/mapper/system$slot $ANDROID_ROOT
-      mount -o ro -t auto /dev/block/mapper/vendor$slot $VENDOR
-      mount -o rw,remount -t auto /dev/block/mapper/vendor$slot $VENDOR
+      if [ "$device_vendorpartition" == "true" ]; then
+        mount -o ro -t auto /dev/block/mapper/vendor$slot $VENDOR 2>/dev/null;
+        mount -o rw,remount -t auto /dev/block/mapper/vendor$slot $VENDOR
+      fi;
+      mount -o ro -t auto /dev/block/mapper/product$slot /product 2>/dev/null;
+      mount -o rw,remount -t auto /dev/block/mapper/product$slot /product
     else
       for block in system vendor; do
         blockdev --setrw /dev/block/mapper/$block 2>/dev/null
       done
-      mount -o ro -t auto /dev/block/mapper/system $ANDROID_ROOT
+      mount -o ro -t auto /dev/block/mapper/system $ANDROID_ROOT 2>/dev/null;
       mount -o rw,remount -t auto /dev/block/mapper/system $ANDROID_ROOT
-      mount -o ro -t auto /dev/block/mapper/vendor $VENDOR
-      mount -o rw,remount -t auto /dev/block/mapper/vendor $VENDOR
+      if [ "$device_vendorpartition" == "true" ]; then
+        mount -o ro -t auto /dev/block/mapper/vendor $VENDOR 2>/dev/null;
+        mount -o rw,remount -t auto /dev/block/mapper/vendor $VENDOR
+      fi;
+      mount -o ro -t auto /dev/block/mapper/product /product 2>/dev/null;
+      mount -o rw,remount -t auto /dev/block/mapper/product /product
     fi;
   else
-    if [ "$device_vendorpartition" == "true" ]; then
-      mount -o ro -t auto $VENDOR
-      mount -o rw,remount -t auto $VENDOR
-    fi;
-    if [ -d /system_root ] && [ -n "$(cat $filesystem | grep /system_root)" ]; then
+    if [ -d /system_root ] && [ -n "$(cat /etc/fstab | grep /system_root)" ]; then
       ANDROID_ROOT=/system_root
     else
       ANDROID_ROOT=/system
     fi;
-    if ! is_mounted $ANDROID_ROOT; then
-      mount -o ro -t auto $ANDROID_ROOT 2>/dev/null;
-      mount -o rw,remount -t auto $ANDROID_ROOT
+    mount -o ro -t auto $ANDROID_ROOT 2>/dev/null;
+    mount -o rw,remount -t auto $ANDROID_ROOT
+    if [ "$device_vendorpartition" == "true" ]; then
+      mount -o ro -t auto $VENDOR 2>/dev/null;
+      mount -o rw,remount -t auto $VENDOR
     fi;
-    mount_block() {
-      if [ "$device_vendorpartition" = "true" ]; then
-        mount -o ro -t auto /dev/block/bootdevice/by-name/vendor $VENDOR 2>/dev/null;
-        mount -o rw,remount -t auto /dev/block/bootdevice/by-name/vendor $VENDOR
-      fi;
-      mount -o ro -t auto /dev/block/bootdevice/by-name/system $ANDROID_ROOT 2>/dev/null;
-      mount -o rw,remount -t auto /dev/block/bootdevice/by-name/system $ANDROID_ROOT
-      local slot=$(getprop ro.boot.slot_suffix 2>/dev/null)
-      if [ "$system_as_root" == "true" ]; then
-        if [ "$device_abpartition" == "true" ]; then
-          mount -o ro -t auto /dev/block/bootdevice/by-name/system$slot /system
-          mount -o rw,remount -t auto /dev/block/bootdevice/by-name/system$slot /system
-          mount -o ro -t auto /dev/block/bootdevice/by-name/vendor$slot $VENDOR
+    if [ "$system_as_root" == "true" ]; then
+      if [ "$device_abpartition" == "true" ]; then
+        local slot=$(getprop ro.boot.slot_suffix 2>/dev/null)
+        umount $ANDROID_ROOT
+        umount $VENDOR
+        mount -o ro -t auto /dev/block/bootdevice/by-name/system$slot /system 2>/dev/null;
+        mount -o rw,remount -t auto /dev/block/bootdevice/by-name/system$slot /system
+        if [ "$device_vendorpartition" = "true" ]; then
+          mount -o ro -t auto /dev/block/bootdevice/by-name/vendor$slot $VENDOR 2>/dev/null;
           mount -o rw,remount -t auto /dev/block/bootdevice/by-name/vendor$slot $VENDOR
         fi;
       fi;
-    }
-    if [ $? != 0 ]; then
-      umount $ANDROID_ROOT
-      umount $VENDOR
-      mount_block;
     fi;
   fi;
   mount_apex;
@@ -356,9 +362,10 @@ system_layout() {
     # Set installation layout for dynamic partition
     SYSTEM=$ANDROID_ROOT
   else
-    if [ -f /system_root/system/build.prop ] && [ -n "$(cat $filesystem | grep /system_root)" ];
-    then
+    if [ -f /system_root/system/build.prop ] && [ -n "$(cat /etc/fstab | grep /system_root)" ]; then
       SYSTEM=/system_root/system
+    elif [ "$device_abpartition" == "true" ]; then
+      SYSTEM=/system/system
     else
       SYSTEM=/system
     fi;
@@ -366,33 +373,47 @@ system_layout() {
 }
 
 boot_SAR() {
-  if [ -n "$(cat $filesystem | grep /system_root)" ]; then
+  if [ -f "/system_root/init.rc" ]; then
     sed -i '/init.${ro.zygote}.rc/a\\import /init.bootlog.rc' /system_root/init.rc
     cp -f $TMP/init.bootlog.rc /system_root/init.bootlog.rc
     chmod 0750 /system_root/init.bootlog.rc
     chcon -h u:object_r:rootfs:s0 "/system_root/init.bootlog.rc";
   else
-    SAR_PARTITION_LAYOUT=false
+    echo "ERROR: Unable to find kernel init" >> $bootlog_SAR;
   fi;
 }
 
 boot_AB() {
-  if [ ! -z "$active_slot" ]; then
+  if [ -f "/system/init.rc" ]; then
     sed -i '/init.${ro.zygote}.rc/a\\import /init.bootlog.rc' /system/init.rc
     cp -f $TMP/init.bootlog.rc /system/init.bootlog.rc
     chmod 0750 /system/init.bootlog.rc
     chcon -h u:object_r:rootfs:s0 "/system/init.bootlog.rc";
   else
-    AB_PARTITION_LAYOUT=false
+    echo "ERROR: Unable to find kernel init" >> $bootlog_AB;
   fi;
 }
 
 boot_A() {
-  if [ "$SAR_PARTITION_LAYOUT" == "false" ] && [ "$AB_PARTITION_LAYOUT" == "false" ]; then
+  if [ -f "/init.rc" ] && [ -n "$(cat /init.rc | grep ro.zygote)" ]; then
     sed -i '/init.${ro.zygote}.rc/a\\import /init.bootlog.rc' /init.rc
     cp -f $TMP/init.bootlog.rc /init.bootlog.rc
     chmod 0750 /init.bootlog.rc
     chcon -h u:object_r:rootfs:s0 "/init.bootlog.rc";
+  else
+    echo "ERROR: Unable to find kernel init" >> $bootlog_A;
+  fi;
+}
+
+boot_SYS() {
+  INIT="/system/system/etc/init/hw/init.rc"
+  if [ -f $INIT ] && [ -n "$(cat $INIT | grep ro.zygote)" ]; then
+    sed -i '/init.${ro.zygote}.rc/a\\import /system/etc/init/hw/init.bootlog.rc' $INIT
+    cp -f $TMP/init.bootlog.rc /system/system/etc/init/hw/init.bootlog.rc
+    chmod 0750 /system/system/etc/init/hw/init.bootlog.rc
+    chcon -h u:object_r:system_file:s0 "/system/system/etc/init/hw/init.bootlog.rc";
+  else
+    echo "ERROR: Unable to find kernel init" >> $bootlog_SYS;
   fi;
 }
 
@@ -499,6 +520,7 @@ unmount_all() {
       umount $VENDOR
     fi;
   fi;
+  umount /product
   umount /persist
   umount /dev/random
 }
@@ -530,29 +552,29 @@ clean_logs() {
 
 on_installed() {
   on_install_complete;
+  unmount_all;
   clean_logs;
   cleanup;
   recovery_cleanup;
-  unmount_all;
 }
 
 mount_abort() {
   ui_print "$*";
   on_mount_failed;
+  unmount_all;
   clean_logs;
   cleanup;
   recovery_cleanup;
-  unmount_all;
   exit 1;
 }
 
 on_abort() {
   ui_print "$*";
   on_install_failed;
+  unmount_all;
   clean_logs;
   cleanup;
   recovery_cleanup;
-  unmount_all;
   exit 1;
 }
 
@@ -630,10 +652,14 @@ on_whitelist_check() {
 
 # Set version check property
 on_version_check() {
-  android_sdk="$(get_prop "ro.build.version.sdk")";
-  supported_sdk="";
-  android_version="$(get_prop "ro.build.version.release")";
-  supported_version="";
+  if [ "$ZIPTYPE" == "addon" ]; then
+    android_sdk="$(get_prop "ro.build.version.sdk")";
+  else
+    android_sdk="$(get_prop "ro.build.version.sdk")";
+    supported_sdk="";
+    android_version="$(get_prop "ro.build.version.release")";
+    supported_version="";
+  fi;
 }
 
 # Set product check property
@@ -1274,16 +1300,21 @@ set_sparse() {
 
   # execute sparse functions
   exec_sparse_format() {
-    send_sparse_1;
-    send_sparse_2;
-    send_sparse_3;
-    send_sparse_4;
-    send_sparse_5;
-    send_sparse_6;
-    send_sparse_7;
-    send_sparse_8;
-    send_sparse_9;
-    send_sparse_10;
+    if [ "$ZIPTYPE" == "addon" ]; then
+      send_sparse_1;
+      send_sparse_2;
+    else
+      send_sparse_1;
+      send_sparse_2;
+      send_sparse_3;
+      send_sparse_4;
+      send_sparse_5;
+      send_sparse_6;
+      send_sparse_7;
+      send_sparse_8;
+      send_sparse_9;
+      send_sparse_10;
+    fi;
   }
   exec_sparse_format;
 }
@@ -2418,6 +2449,39 @@ config_install() {
   fi;
 }
 
+# Set addon package installation
+addon_core_install() {
+  ADDON_CORE=""
+  PKG_CORE=""
+  ZIP="zip/core/$ADDON_CORE"
+  # Unzip system files from installer
+  unpack_zip;
+  # Unpack system files
+  tar tvf $ZIP_FILE/core/$ADDON_CORE >> $LOG;
+  tar -xf $ZIP_FILE/core/$ADDON_CORE -C $TMP_PRIV;
+  # Install package
+  set_sparse;
+  # Set selinux context
+  chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/$PKG_CORE";
+  chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/$PKG_CORE/$PKG_CORE.apk";
+}
+
+addon_sys_install() {
+  ADDON_SYS=""
+  PKG_SYS=""
+  ZIP="zip/sys/$ADDON_SYS"
+  # Unzip system files from installer
+  unpack_zip;
+  # Unpack system files
+  tar tvf $ZIP_FILE/sys/$ADDON_SYS >> $LOG;
+  tar -xf $ZIP_FILE/sys/$ADDON_SYS -C $TMP_SYS;
+  # Install package
+  set_sparse;
+  # Set selinux context
+  chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/$PKG_SYS";
+  chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/$PKG_SYS/$PKG_SYS.apk";
+}
+
 # Enable Google Assistant
 set_assistant() {
   insert_line $SYSTEM/build.prop "ro.opa.eligible_device=true" after 'net.bt.name=Android' 'ro.opa.eligible_device=true';
@@ -2429,6 +2493,8 @@ opt_v28() {
     cp -f $TMP/pm.sh $SYSTEM/bin/pm.sh
     chmod 0755 $SYSTEM/bin/pm.sh
     chcon -h u:object_r:system_file:s0 "$SYSTEM/bin/pm.sh";
+  else
+    echo "ERROR: Unsupported component for Android SDK $android_sdk" >> $OPTv28;
   fi;
 }
 
@@ -2438,6 +2504,8 @@ opt_v29() {
   if [ "$android_sdk" == "$supported_sdk_v29" ]; then
     sed -i '/allow-in-power-save package="com.google.android.gms"/d' $SYSTEM/etc/permissions/*.xml
     sed -i '/allow-in-power-save package="com.google.android.gms"/d' $SYSTEM/etc/sysconfig/*.xml
+  else
+    echo "ERROR: Unsupported component for Android SDK $android_sdk" >> $OPTv29;
   fi;
 }
 
@@ -2755,33 +2823,51 @@ ui_print " ";
 
 # These set of functions should be executed before any other install function
 function pre_install() {
-  selinux;
-  clean_logs;
-  logd;
-  on_sdk;
-  on_partition_check;
-  fstab;
-  set_mount;
-  early_umount;
-  mount_all;
-  system_layout;
-  # boot_SAR;
-  # boot_AB;
-  # boot_A;
-  on_AB;
-  mount_stat;
-  profile;
-  on_target;
-  on_version_check;
-  check_sdk;
-  check_version;
-  on_platform_check;
-  on_platform;
-  build_platform;
-  check_platform;
-  on_data_check;
-  clean_inst;
-  opt_v29;
+  if [ "$ZIPTYPE" == "addon" ]; then
+    selinux;
+    clean_logs;
+    logd;
+    on_sdk;
+    on_partition_check;
+    set_mount;
+    super_partition;
+    early_umount;
+    mount_all;
+    system_layout;
+    mount_stat;
+    profile;
+    on_version_check;
+  else
+    selinux;
+    clean_logs;
+    logd;
+    on_sdk;
+    on_partition_check;
+    # fstab;
+    set_mount;
+    super_partition;
+    early_umount;
+    mount_all;
+    system_layout;
+    # boot_SAR;
+    # boot_AB;
+    # boot_A;
+    # boot_SYS;
+    # on_AB;
+    mount_stat;
+    profile;
+    on_target;
+    on_version_check;
+    check_sdk;
+    check_version;
+    on_platform_check;
+    on_platform;
+    build_platform;
+    check_platform;
+    on_data_check;
+    clean_inst;
+    opt_v29;
+  fi;
 }
 pre_install;
 
@@ -2805,52 +2891,72 @@ diskfree() {
     ui_print " ";
   fi;
 }
-diskfree;
+if [ "$ZIPTYPE" == "basic" ]; then
+  diskfree;
+fi;
 
-ui_print "Installing";
+if [ "$ZIPTYPE" == "addon" ]; then
+  ui_print "Installing $PKG";
+else
+  ui_print "Installing";
+fi;
 
 # Do not merge 'pre_install' functions here
 # Begin installation
 function post_install() {
-  build_defaults;
-  product_pathmap;
-  system_pathmap;
-  recovery_actions;
-  mk_component;
-  # pre_installed;
-  pre_installed_v29;
-  pre_installed_v28;
-  pre_installed_v27;
-  pre_installed_v25;
-  sdk_v29_install;
-  sdk_v28_install;
-  sdk_v27_install;
-  sdk_v25_install;
-  runtime_permission;
-  on_config_check;
-  get_setup_config;
-  config_install;
-  # backup_script;
-  set_assistant;
-  opt_v28;
-  # on_whitelist_check;
-  # whitelist_patch;
-  on_product_check;
-  get_cts_config;
-  cts_patch;
-  sdk_fix;
-  selinux_fix;
-  # sqlite_opt;
-  addon_inst;
-  addon_restore;
-  # config_info;
-  on_installed;
-  recovery_cleanup;
+  if [ "$ZIPTYPE" == "addon" ]; then
+    build_defaults;
+    product_pathmap;
+    system_pathmap;
+    recovery_actions;
+    mk_component;
+    addon_core_install;
+    addon_sys_install;
+    on_installed;
+    recovery_cleanup;
+  else
+    build_defaults;
+    product_pathmap;
+    system_pathmap;
+    recovery_actions;
+    mk_component;
+    # pre_installed;
+    pre_installed_v29;
+    pre_installed_v28;
+    pre_installed_v27;
+    pre_installed_v25;
+    sdk_v29_install;
+    sdk_v28_install;
+    sdk_v27_install;
+    sdk_v25_install;
+    runtime_permission;
+    on_config_check;
+    get_setup_config;
+    config_install;
+    # backup_script;
+    set_assistant;
+    opt_v28;
+    # on_whitelist_check;
+    # whitelist_patch;
+    on_product_check;
+    get_cts_config;
+    cts_patch;
+    sdk_fix;
+    selinux_fix;
+    # sqlite_opt;
+    # addon_inst;
+    # addon_restore;
+    # config_info;
+    on_installed;
+    recovery_cleanup;
+  fi;
 }
 post_install; # end installation
 
 # Do not parse this function
-build_info;
-print_build_info;
+if [ "$ZIPTYPE" == "basic" ]; then
+  build_info;
+  print_build_info;
+fi;
 
 # end method

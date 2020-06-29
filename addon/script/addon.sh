@@ -7,7 +7,7 @@
 #
 # Build Date      : Monday May 04 10:30:21 IST 2020
 #
-# Updated on      : Thursday June 11 10:55:50 IST 2020
+# Updated on      : Monday July 20 07:55:10 IST 2020
 #
 # BiTGApps Author : TheHitMan @ xda-developers
 #
@@ -128,9 +128,9 @@ do
               else
                 $BB echo -e "${LRED}  => Package not installed ${NC}" && break
               fi;
+              rm -rf /cache/VelvetPrebuilt.tar.xz 2>/dev/null;
+              $BB echo -e "${CYAN}  => Installation Finished ${NC}"
             fi;
-            rm -rf /cache/VelvetPrebuilt.tar.xz 2>/dev/null;
-            $BB echo -e "${CYAN}  => Installation Finished ${NC}"
             ;;
         "Wellbeing")
             $BB echo -e "${CYAN}  => Downloading Prebuilt Wellbeing Package ${NC}"
