@@ -364,6 +364,8 @@ system_layout() {
   else
     if [ -f /system_root/system/build.prop ] && [ -n "$(cat /etc/fstab | grep /system_root)" ]; then
       SYSTEM=/system_root/system
+    elif [ -f /system/system/build.prop ] && [ -n "$(cat /etc/fstab | grep /system)" ]; then
+      SYSTEM=/system/system
     elif [ "$device_abpartition" == "true" ]; then
       SYSTEM=/system/system
     else
@@ -2936,8 +2938,8 @@ function post_install() {
     # backup_script;
     set_assistant;
     opt_v28;
-    # on_whitelist_check;
-    # whitelist_patch;
+    on_whitelist_check;
+    whitelist_patch;
     on_product_check;
     get_cts_config;
     cts_patch;
