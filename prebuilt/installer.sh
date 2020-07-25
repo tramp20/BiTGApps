@@ -292,7 +292,9 @@ early_umount() {
 mount_all() {
   vendor_mnt;
   mount -o bind /dev/urandom /dev/random
-  mount /data
+  if ! is_mounted /data; then
+    mount /data
+  fi;
   mount -o ro -t auto /cache 2>/dev/null;
   mount -o rw,remount -t auto /cache
   mount -o ro -t auto /persist 2>/dev/null;
@@ -344,8 +346,18 @@ mount_all() {
         local slot=$(getprop ro.boot.slot_suffix 2>/dev/null)
         umount $ANDROID_ROOT
         umount $VENDOR
-        mount -o ro -t auto /dev/block/bootdevice/by-name/system$slot /system 2>/dev/null;
-        mount -o rw,remount -t auto /dev/block/bootdevice/by-name/system$slot /system
+        if [ "$ANDROID_ROOT" == "/system_root" ] && [ -n "$(cat /etc/fstab | grep /system_root)" ]; then
+          mount -o ro -t auto /dev/block/bootdevice/by-name/system$slot /system_root 2>/dev/null;
+          mount -o rw,remount -t auto /dev/block/bootdevice/by-name/system$slot /system_root
+        fi;
+        if [ "$ANDROID_ROOT" == "/system" ] && [ -n "$(cat /etc/fstab | grep /system_root)" ]; then
+          mount -o ro -t auto /dev/block/bootdevice/by-name/system$slot /system_root 2>/dev/null;
+          mount -o rw,remount -t auto /dev/block/bootdevice/by-name/system$slot /system_root
+        fi;
+        if [ "$ANDROID_ROOT" == "/system" ] && [ -n "$(cat /etc/fstab | grep /system)" ]; then
+          mount -o ro -t auto /dev/block/bootdevice/by-name/system$slot /system 2>/dev/null;
+          mount -o rw,remount -t auto /dev/block/bootdevice/by-name/system$slot /system
+        fi;
         if [ "$device_vendorpartition" = "true" ]; then
           mount -o ro -t auto /dev/block/bootdevice/by-name/vendor$slot $VENDOR 2>/dev/null;
           mount -o rw,remount -t auto /dev/block/bootdevice/by-name/vendor$slot $VENDOR
@@ -367,6 +379,10 @@ system_layout() {
     elif [ -f /system/system/build.prop ] && [ -n "$(cat /etc/fstab | grep /system)" ]; then
       SYSTEM=/system/system
     elif [ "$device_abpartition" == "true" ]; then
+      SYSTEM=/system/system
+    elif [ "$device_abpartition" == "true" ] && [ -n "$(cat /etc/fstab | grep /system_root)" ]; then
+      SYSTEM=/system_root/system
+    elif [ "$device_abpartition" == "true" ] && [ -n "$(cat /etc/fstab | grep /system)" ]; then
       SYSTEM=/system/system
     else
       SYSTEM=/system
