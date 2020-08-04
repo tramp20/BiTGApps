@@ -7,8 +7,6 @@
 #
 # Build Date      : Friday March 15 11:36:43 IST 2019
 #
-# Updated on      : Monday July 20 07:55:10 IST 2020
-#
 # BiTGApps Author : TheHitMan @ xda-developers
 #
 # Copyright       : Copyright (C) 2020 TheHitMan7 (Kartik Verma)
@@ -156,13 +154,13 @@ build_defaults() {
   CTS_DEFAULT_VENDOR_BUILD_BOOTIMAGE="ro.bootimage.build.fingerprint=";
   CTS_DEFAULT_VENDOR_BUILD_SEC_PATCH="ro.vendor.build.security_patch=";
   # CTS patch
-  CTS_SYSTEM_EXT_BUILD_FINGERPRINT="ro.system.build.fingerprint=google/coral/coral:10/QQ2A.200405.005/6254899:user/release-keys";
-  CTS_SYSTEM_BUILD_FINGERPRINT="ro.build.fingerprint=google/coral/coral:10/QQ2A.200405.005/6254899:user/release-keys";
-  CTS_SYSTEM_BUILD_SEC_PATCH="ro.build.version.security_patch=2020-04-05";
+  CTS_SYSTEM_EXT_BUILD_FINGERPRINT="ro.system.build.fingerprint=google/coral/coral:10/QQ3A.200805.001/6578210:user/release-keys";
+  CTS_SYSTEM_BUILD_FINGERPRINT="ro.build.fingerprint=google/coral/coral:10/QQ3A.200805.001/6578210:user/release-keys";
+  CTS_SYSTEM_BUILD_SEC_PATCH="ro.build.version.security_patch=2020-08-05";
   CTS_SYSTEM_BUILD_TYPE="ro.build.type=user";
-  CTS_VENDOR_BUILD_FINGERPRINT="ro.vendor.build.fingerprint=google/coral/coral:10/QQ2A.200405.005/6254899:user/release-keys";
-  CTS_VENDOR_BUILD_BOOTIMAGE="ro.bootimage.build.fingerprint=google/coral/coral:10/QQ2A.200405.005/6254899:user/release-keys";
-  CTS_VENDOR_BUILD_SEC_PATCH="ro.vendor.build.security_patch=2020-04-05";
+  CTS_VENDOR_BUILD_FINGERPRINT="ro.vendor.build.fingerprint=google/coral/coral:10/QQ3A.200805.001/6578210:user/release-keys";
+  CTS_VENDOR_BUILD_BOOTIMAGE="ro.bootimage.build.fingerprint=google/coral/coral:10/QQ3A.200805.001/6578210:user/release-keys";
+  CTS_VENDOR_BUILD_SEC_PATCH="ro.vendor.build.security_patch=2020-08-05";
 }
 
 # Set partition and boot slot property
@@ -341,6 +339,10 @@ mount_all() {
       mount -o ro -t auto $VENDOR 2>/dev/null;
       mount -o rw,remount -t auto $VENDOR
     fi;
+    if [ -d /product ] && [ -n "$(cat /etc/fstab | grep /product)" ]; then
+      mount -o ro -t auto /product 2>/dev/null;
+      mount -o rw,remount -t auto /product
+    fi;
     if [ "$system_as_root" == "true" ]; then
       if [ "$device_abpartition" == "true" ]; then
         local slot=$(getprop ro.boot.slot_suffix 2>/dev/null)
@@ -361,6 +363,10 @@ mount_all() {
         if [ "$device_vendorpartition" = "true" ]; then
           mount -o ro -t auto /dev/block/bootdevice/by-name/vendor$slot $VENDOR 2>/dev/null;
           mount -o rw,remount -t auto /dev/block/bootdevice/by-name/vendor$slot $VENDOR
+        fi;
+        if [ -d /product ] && [ -n "$(cat /etc/fstab | grep /product)" ]; then
+          mount -o ro -t auto /dev/block/bootdevice/by-name/product /product 2>/dev/null;
+          mount -o rw,remount -t auto /dev/block/bootdevice/by-name/product /product
         fi;
       fi;
     fi;
@@ -384,6 +390,8 @@ system_layout() {
       SYSTEM=/system_root/system
     elif [ "$device_abpartition" == "true" ] && [ -n "$(cat /etc/fstab | grep /system)" ]; then
       SYSTEM=/system/system
+    elif [ -f /system/build.prop ] && [ -n "$(cat /etc/fstab | grep /system_root)" ]; then
+      SYSTEM=/system
     else
       SYSTEM=/system
     fi;
@@ -775,6 +783,23 @@ clean_inst() {
   fi;
 }
 
+# Check availablility of pre-installed GApps
+on_gsf() {
+  GSF="false"
+  # Add support for Paranoid Android
+  if [ -n "$(cat $SYSTEM/build.prop | grep ro.pa.device)" ]; then
+    GSF="true"
+  fi;
+  # Add support for PixelExperience
+  if [ -n "$(cat $SYSTEM/build.prop | grep org.pixelexperience.version)" ]; then
+    GSF="true"
+  fi;
+  # Add support for EvolutionX
+  if [ -n "$(cat $SYSTEM/build.prop | grep org.evolution.device)" ]; then
+    GSF="true"
+  fi;
+}
+
 # Set pathmap
 product_pathmap() {
   if [ "$android_sdk" == "$supported_sdk_v29" ]; then
@@ -901,124 +926,516 @@ mk_component() {
 
 # Remove pre-installed packages shipped with ROM
 pre_installed() {
-  rm -rf $SYSTEM/app/GoogleCalendarSyncAdapter
-  rm -rf $SYSTEM/app/GoogleContactsSyncAdapter
-  rm -rf $SYSTEM/app/ExtShared
-  rm -rf $SYSTEM/app/GoogleExtShared
-  rm -rf $SYSTEM/app/GooglePrintRecommendationService
-  rm -rf $SYSTEM/app/MarkupGoogle
-  rm -rf $SYSTEM/app/SoundPickerPrebuilt
-  rm -rf $SYSTEM/priv-app/CarrierSetup
-  rm -rf $SYSTEM/priv-app/ConfigUpdater
-  rm -rf $SYSTEM/priv-app/GmsCoreSetupPrebuilt
-  rm -rf $SYSTEM/priv-app/ExtServices
-  rm -rf $SYSTEM/priv-app/GoogleExtServices
-  rm -rf $SYSTEM/priv-app/GoogleExtServicesPrebuilt
-  rm -rf $SYSTEM/priv-app/GoogleServicesFramework
-  rm -rf $SYSTEM/priv-app/Phonesky
-  rm -rf $SYSTEM/priv-app/PrebuiltGmsCoreQt
-  rm -rf $SYSTEM/framework/com.google.android.dialer.support.jar
-  rm -rf $SYSTEM/framework/com.google.android.maps.jar
-  rm -rf $SYSTEM/framework/com.google.android.media.effects.jar
-  rm -rf $SYSTEM/lib/libsketchology_native.so
-  rm -rf $SYSTEM/lib64/libjni_latinimegoogle.so
-  rm -rf $SYSTEM/lib64/libsketchology_native.so
-  rm -rf $SYSTEM/etc/sysconfig/dialer_experience.xml
-  rm -rf $SYSTEM/etc/sysconfig/google.xml
-  rm -rf $SYSTEM/etc/sysconfig/google_build.xml
-  rm -rf $SYSTEM/etc/sysconfig/google_vr_build.xml
-  rm -rf $SYSTEM/etc/sysconfig/google_exclusives_enable.xml
-  rm -rf $SYSTEM/etc/sysconfig/google-hiddenapi-package-whitelist.xml
-  rm -rf $SYSTEM/etc/sysconfig/nexus.xml
-  rm -rf $SYSTEM/etc/sysconfig/nga.xml
-  rm -rf $SYSTEM/etc/sysconfig/pixel_experience_2017.xml
-  rm -rf $SYSTEM/etc/sysconfig/pixel_experience_2018.xml
-  rm -rf $SYSTEM/etc/sysconfig/pixel_experience_2019_midyear.xml
-  rm -rf $SYSTEM/etc/sysconfig/pixel_experience_2019.xml
-  rm -rf $SYSTEM/etc/sysconfig/whitelist_com.android.omadm.service.xml
-  rm -rf $SYSTEM/etc/default-permissions/default-permissions.xml
-  rm -rf $SYSTEM/etc/default-permissions/opengapps-permissions.xml
-  rm -rf $SYSTEM/etc/permissions/com.google.android.dialer.support.xml
-  rm -rf $SYSTEM/etc/permissions/com.google.android.maps.xml
-  rm -rf $SYSTEM/etc/permissions/com.google.android.media.effects.xml
-  rm -rf $SYSTEM/etc/permissions/GoogleExtServices_permissions.xml
-  rm -rf $SYSTEM/etc/permissions/GooglePermissionController_permissions.xml
-  rm -rf $SYSTEM/etc/permissions/privapp-permissions-google.xml
-  rm -rf $SYSTEM/etc/permissions/privapp-permissions-google-p.xml
-  rm -rf $SYSTEM/etc/permissions/privapp-permissions-google-ps.xml
-  rm -rf $SYSTEM/etc/permissions/split-permissions-google.xml
-  rm -rf $SYSTEM/etc/preferred-apps/google.xml
-  rm -rf $SYSTEM/etc/g.prop
-  rm -rf $SYSTEM/product/app/arcore
-  rm -rf $SYSTEM/product/app/CalculatorGooglePrebuilt
-  rm -rf $SYSTEM/product/app/CalendarGooglePrebuilt
-  rm -rf $SYSTEM/product/app/Chrome
-  rm -rf $SYSTEM/product/app/GoogleContacts
-  rm -rf $SYSTEM/product/app/GoogleContactsSyncAdapter
-  rm -rf $SYSTEM/product/app/GoogleTTS
-  rm -rf $SYSTEM/product/app/LatinIMEGooglePrebuilt
-  rm -rf $SYSTEM/product/app/LocationHistoryPrebuilt
-  rm -rf $SYSTEM/product/app/MarkupGoogle
-  rm -rf $SYSTEM/product/app/NgaResources
-  rm -rf $SYSTEM/product/app/PrebuiltBugle
-  rm -rf $SYSTEM/product/app/Photos
-  rm -rf $SYSTEM/product/app/PrebuiltDeskClockGoogle
-  rm -rf $SYSTEM/product/app/SoundPickerPrebuilt
-  rm -rf $SYSTEM/product/app/TrichromeLibrary
-  rm -rf $SYSTEM/product/app/talkback
-  rm -rf $SYSTEM/product/app/WebViewGoogle
-  rm -rf $SYSTEM/product/priv-app/AndroidMigratePrebuilt
-  rm -rf $SYSTEM/product/priv-app/AndroidPlatformServices
-  rm -rf $SYSTEM/product/priv-app/CarrierServices
-  rm -rf $SYSTEM/product/priv-app/ConfigUpdater
-  rm -rf $SYSTEM/product/priv-app/ConnMetrics
-  rm -rf $SYSTEM/product/priv-app/GoogleDialer
-  rm -rf $SYSTEM/product/priv-app/GoogleFeedback
-  rm -rf $SYSTEM/product/priv-app/GoogleOneTimeInitializer
-  rm -rf $SYSTEM/product/priv-app/GooglePartnerSetup
-  rm -rf $SYSTEM/product/priv-app/GoogleServicesFramework
-  rm -rf $SYSTEM/product/priv-app/Phonesky
-  rm -rf $SYSTEM/product/priv-app/PixelSetupWizard
-  rm -rf $SYSTEM/product/priv-app/PrebuiltGmsCoreQt
-  rm -rf $SYSTEM/product/priv-app/RecorderPrebuilt
-  rm -rf $SYSTEM/product/priv-app/SetupWizardPrebuilt
-  rm -rf $SYSTEM/product/priv-app/TipsPrebuilt
-  rm -rf $SYSTEM/product/priv-app/TurboPrebuilt
-  rm -rf $SYSTEM/product/priv-app/Velvet
-  rm -rf $SYSTEM/product/priv-app/WallpaperPickerGoogleRelease
-  rm -rf $SYSTEM/product/priv-app/WellbeingPrebuilt
-  rm -rf $SYSTEM/product/framework/com.google.android.dialer.support.jar
-  rm -rf $SYSTEM/product/framework/com.google.android.maps.jar
-  rm -rf $SYSTEM/product/framework/com.google.android.media.effects.jar
-  rm -rf $SYSTEM/product/lib/libbarhopper.so
-  rm -rf $SYSTEM/product/lib/libsketchology_native.so
-  rm -rf $SYSTEM/product/lib64/libbarhopper.so
-  rm -rf $SYSTEM/product/lib64/libsketchology_native.so
-  rm -rf $SYSTEM/product/etc/sysconfig/dialer_experience.xml
-  rm -rf $SYSTEM/product/etc/sysconfig/google.xml
-  rm -rf $SYSTEM/product/etc/sysconfig/google_build.xml
-  rm -rf $SYSTEM/product/etc/sysconfig/google_vr_build.xml
-  rm -rf $SYSTEM/product/etc/sysconfig/google_exclusives_enable.xml
-  rm -rf $SYSTEM/product/etc/sysconfig/google-hiddenapi-package-whitelist.xml
-  rm -rf $SYSTEM/product/etc/sysconfig/nexus.xml
-  rm -rf $SYSTEM/product/etc/sysconfig/nga.xml
-  rm -rf $SYSTEM/product/etc/sysconfig/pixel_experience_2017.xml
-  rm -rf $SYSTEM/product/etc/sysconfig/pixel_experience_2018.xml
-  rm -rf $SYSTEM/product/etc/sysconfig/pixel_experience_2019_midyear.xml
-  rm -rf $SYSTEM/product/etc/sysconfig/pixel_experience_2019.xml
-  rm -rf $SYSTEM/product/etc/sysconfig/whitelist_com.android.omadm.service.xml
-  rm -rf $SYSTEM/product/etc/default-permissions/default-permissions.xml
-  rm -rf $SYSTEM/product/etc/default-permissions/opengapps-permissions.xml
-  rm -rf $SYSTEM/product/etc/permissions/com.google.android.dialer.support.xml
-  rm -rf $SYSTEM/product/etc/permissions/com.google.android.maps.xml
-  rm -rf $SYSTEM/product/etc/permissions/com.google.android.media.effects.xml
-  rm -rf $SYSTEM/product/etc/permissions/GoogleExtServices_permissions.xml
-  rm -rf $SYSTEM/product/etc/permissions/GooglePermissionController_permissions.xml
-  rm -rf $SYSTEM/product/etc/permissions/privapp-permissions-google.xml
-  rm -rf $SYSTEM/product/etc/permissions/privapp-permissions-google-p.xml
-  rm -rf $SYSTEM/product/etc/permissions/privapp-permissions-google-ps.xml
-  rm -rf $SYSTEM/product/etc/permissions/split-permissions-google.xml
-  rm -rf $SYSTEM/product/etc/preferred-apps/google.xml
+  if [ "$GSF" == "true" ]; then
+    rm -rf $SYSTEM/addon.d/30*
+    rm -rf $SYSTEM/addon.d/69*
+    rm -rf $SYSTEM/addon.d/70*
+    rm -rf $SYSTEM/addon.d/71*
+    rm -rf $SYSTEM/addon.d/74*
+    rm -rf $SYSTEM/addon.d/75*
+    rm -rf $SYSTEM/addon.d/78*
+    rm -rf $SYSTEM/addon.d/90*
+    rm -rf $SYSTEM/app/AndroidAuto*
+    rm -rf $SYSTEM/app/arcore
+    rm -rf $SYSTEM/app/Books*
+    rm -rf $SYSTEM/app/CarHomeGoogle
+    rm -rf $SYSTEM/app/CalculatorGoogle*
+    rm -rf $SYSTEM/app/CalendarGoogle*
+    rm -rf $SYSTEM/app/CarHomeGoogle
+    rm -rf $SYSTEM/app/Chrome*
+    rm -rf $SYSTEM/app/CloudPrint*
+    rm -rf $SYSTEM/app/DevicePersonalizationServices
+    rm -rf $SYSTEM/app/DMAgent
+    rm -rf $SYSTEM/app/Drive
+    rm -rf $SYSTEM/app/Duo
+    rm -rf $SYSTEM/app/EditorsDocs
+    rm -rf $SYSTEM/app/Editorssheets
+    rm -rf $SYSTEM/app/EditorsSlides
+    rm -rf $SYSTEM/app/ExchangeServices
+    rm -rf $SYSTEM/app/FaceLock
+    rm -rf $SYSTEM/app/Fitness*
+    rm -rf $SYSTEM/app/GalleryGo*
+    rm -rf $SYSTEM/app/Gcam*
+    rm -rf $SYSTEM/app/GCam*
+    rm -rf $SYSTEM/app/Gmail*
+    rm -rf $SYSTEM/app/GoogleCamera*
+    rm -rf $SYSTEM/app/GoogleCalendar*
+    rm -rf $SYSTEM/app/GoogleCalendarSyncAdapter
+    rm -rf $SYSTEM/app/GoogleContactsSyncAdapter
+    rm -rf $SYSTEM/app/GoogleCloudPrint
+    rm -rf $SYSTEM/app/GoogleEarth
+    rm -rf $SYSTEM/app/GoogleExtshared
+    rm -rf $SYSTEM/app/GooglePrintRecommendationService
+    rm -rf $SYSTEM/app/GoogleGo*
+    rm -rf $SYSTEM/app/GoogleHome*
+    rm -rf $SYSTEM/app/GoogleHindiIME*
+    rm -rf $SYSTEM/app/GoogleKeep*
+    rm -rf $SYSTEM/app/GoogleJapaneseInput*
+    rm -rf $SYSTEM/app/GoogleLoginService*
+    rm -rf $SYSTEM/app/GoogleMusic*
+    rm -rf $SYSTEM/app/GoogleNow*
+    rm -rf $SYSTEM/app/GooglePhotos*
+    rm -rf $SYSTEM/app/GooglePinyinIME*
+    rm -rf $SYSTEM/app/GooglePlus
+    rm -rf $SYSTEM/app/GoogleTTS*
+    rm -rf $SYSTEM/app/GoogleVrCore*
+    rm -rf $SYSTEM/app/GoogleZhuyinIME*
+    rm -rf $SYSTEM/app/Hangouts
+    rm -rf $SYSTEM/app/KoreanIME*
+    rm -rf $SYSTEM/app/Maps
+    rm -rf $SYSTEM/app/Markup*
+    rm -rf $SYSTEM/app/Music2*
+    rm -rf $SYSTEM/app/Newsstand
+    rm -rf $SYSTEM/app/NexusWallpapers*
+    rm -rf $SYSTEM/app/Ornament
+    rm -rf $SYSTEM/app/Photos*
+    rm -rf $SYSTEM/app/PlayAutoInstallConfig*
+    rm -rf $SYSTEM/app/PlayGames*
+    rm -rf $SYSTEM/app/PrebuiltExchange3Google
+    rm -rf $SYSTEM/app/PrebuiltGmail
+    rm -rf $SYSTEM/app/PrebuiltKeep
+    rm -rf $SYSTEM/app/Street
+    rm -rf $SYSTEM/app/Stickers*
+    rm -rf $SYSTEM/app/TalkBack
+    rm -rf $SYSTEM/app/talkBack
+    rm -rf $SYSTEM/app/talkback
+    rm -rf $SYSTEM/app/TranslatePrebuilt
+    rm -rf $SYSTEM/app/Tycho
+    rm -rf $SYSTEM/app/Videos
+    rm -rf $SYSTEM/app/Wallet
+    rm -rf $SYSTEM/app/WallpapersBReel*
+    rm -rf $SYSTEM/app/YouTube
+    rm -rf $SYSTEM/etc/default-permissions/default-permissions.xml
+    rm -rf $SYSTEM/etc/default-permissions/opengapps-permissions.xml
+    rm -rf $SYSTEM/etc/permissions/default-permissions.xml
+    rm -rf $SYSTEM/etc/permissions/privapp-permissions-elgoog.xml
+    rm -rf $SYSTEM/etc/permissions/privapp-permissions-google*
+    rm -rf $SYSTEM/etc/permissions/com.google.android.camera*
+    rm -rf $SYSTEM/etc/permissions/com.google.android.dialer*
+    rm -rf $SYSTEM/etc/permissions/com.google.android.maps*
+    rm -rf $SYSTEM/etc/permissions/split-permissions-google.xml
+    rm -rf $SYSTEM/etc/preferred-apps/google.xml
+    rm -rf $SYSTEM/etc/preferred-apps/google_build.xml
+    rm -rf $SYSTEM/etc/sysconfig/pixel_2017_exclusive.xml
+    rm -rf $SYSTEM/etc/sysconfig/pixel_experience_2017.xml
+    rm -rf $SYSTEM/etc/sysconfig/gmsexpress.xml
+    rm -rf $SYSTEM/etc/sysconfig/googledialergo-sysconfig.xml
+    rm -rf $SYSTEM/etc/sysconfig/google-hiddenapi-package-whitelist.xml
+    rm -rf $SYSTEM/etc/sysconfig/google.xml
+    rm -rf $SYSTEM/etc/sysconfig/google_build.xml
+    rm -rf $SYSTEM/etc/sysconfig/google_experience.xml
+    rm -rf $SYSTEM/etc/sysconfig/google_exclusives_enable.xml
+    rm -rf $SYSTEM/etc/sysconfig/go_experience.xml
+    rm -rf $SYSTEM/etc/sysconfig/nga.xml
+    rm -rf $SYSTEM/etc/sysconfig/nexus.xml
+    rm -rf $SYSTEM/etc/sysconfig/pixel*
+    rm -rf $SYSTEM/etc/sysconfig/turbo.xml
+    rm -rf $SYSTEM/etc/sysconfig/wellbeing.xml
+    rm -rf $SYSTEM/framework/com.google.android.camera*
+    rm -rf $SYSTEM/framework/com.google.android.dialer*
+    rm -rf $SYSTEM/framework/com.google.android.maps*
+    rm -rf $SYSTEM/framework/oat/arm/com.google.android.camera*
+    rm -rf $SYSTEM/framework/oat/arm/com.google.android.dialer*
+    rm -rf $SYSTEM/framework/oat/arm/com.google.android.maps*
+    rm -rf $SYSTEM/framework/oat/arm64/com.google.android.camera*
+    rm -rf $SYSTEM/framework/oat/arm64/com.google.android.dialer*
+    rm -rf $SYSTEM/framework/oat/arm64/com.google.android.maps*
+    rm -rf $SYSTEM/lib/libaiai-annotators.so
+    rm -rf $SYSTEM/lib/libcronet.70.0.3522.0.so
+    rm -rf $SYSTEM/lib/libfilterpack_facedetect.so
+    rm -rf $SYSTEM/lib/libfrsdk.so
+    rm -rf $SYSTEM/lib/libgcam.so
+    rm -rf $SYSTEM/lib/libgcam_swig_jni.so
+    rm -rf $SYSTEM/lib/libocr.so
+    rm -rf $SYSTEM/lib/libparticle-extractor_jni.so
+    rm -rf $SYSTEM/lib64/libbarhopper.so
+    rm -rf $SYSTEM/lib64/libfacenet.so
+    rm -rf $SYSTEM/lib64/libfilterpack_facedetect.so
+    rm -rf $SYSTEM/lib64/libfrsdk.so
+    rm -rf $SYSTEM/lib64/libgcam.so
+    rm -rf $SYSTEM/lib64/libgcam_swig_jni.so
+    rm -rf $SYSTEM/lib64/libsketchology_native.so
+    rm -rf $SYSTEM/overlay/PixelConfigOverlay*
+    rm -rf $SYSTEM/priv-app/Aiai*
+    rm -rf $SYSTEM/priv-app/AmbientSense*
+    rm -rf $SYSTEM/priv-app/AndroidAuto*
+    rm -rf $SYSTEM/priv-app/AndroidMigrate*
+    rm -rf $SYSTEM/priv-app/AndroidPlatformServices
+    rm -rf $SYSTEM/priv-app/CalendarGoogle*
+    rm -rf $SYSTEM/priv-app/CalculatorGoogle*
+    rm -rf $SYSTEM/priv-app/Camera*
+    rm -rf $SYSTEM/priv-app/CarrierServices
+    rm -rf $SYSTEM/priv-app/CarrierSetup
+    rm -rf $SYSTEM/priv-app/ConfigUpdater
+    rm -rf $SYSTEM/priv-app/DataTransferTool
+    rm -rf $SYSTEM/priv-app/DeviceHealthServices
+    rm -rf $SYSTEM/priv-app/DevicePersonalizationServices
+    rm -rf $SYSTEM/priv-app/DigitalWellbeing*
+    rm -rf $SYSTEM/priv-app/FaceLock
+    rm -rf $SYSTEM/priv-app/Gcam*
+    rm -rf $SYSTEM/priv-app/GCam*
+    rm -rf $SYSTEM/priv-app/GCS
+    rm -rf $SYSTEM/priv-app/GmsCore*
+    rm -rf $SYSTEM/priv-app/GoogleCalculator*
+    rm -rf $SYSTEM/priv-app/GoogleCalendar*
+    rm -rf $SYSTEM/priv-app/GoogleCamera*
+    rm -rf $SYSTEM/priv-app/GoogleBackupTransport
+    rm -rf $SYSTEM/priv-app/GoogleExtservices
+    rm -rf $SYSTEM/priv-app/GoogleExtServicesPrebuilt
+    rm -rf $SYSTEM/priv-app/GoogleFeedback
+    rm -rf $SYSTEM/priv-app/GoogleOneTimeInitializer
+    rm -rf $SYSTEM/priv-app/GooglePartnerSetup
+    rm -rf $SYSTEM/priv-app/GoogleRestore
+    rm -rf $SYSTEM/priv-app/GoogleServicesFramework
+    rm -rf $SYSTEM/priv-app/HotwordEnrollment*
+    rm -rf $SYSTEM/priv-app/HotWordEnrollment*
+    rm -rf $SYSTEM/priv-app/matchmaker*
+    rm -rf $SYSTEM/priv-app/Matchmaker*
+    rm -rf $SYSTEM/priv-app/Phonesky
+    rm -rf $SYSTEM/priv-app/PixelLive*
+    rm -rf $SYSTEM/priv-app/PrebuiltGmsCore*
+    rm -rf $SYSTEM/priv-app/PixelSetupWizard*
+    rm -rf $SYSTEM/priv-app/SetupWizard*
+    rm -rf $SYSTEM/priv-app/Tag*
+    rm -rf $SYSTEM/priv-app/Tips*
+    rm -rf $SYSTEM/priv-app/Turbo*
+    rm -rf $SYSTEM/priv-app/Velvet
+    rm -rf $SYSTEM/priv-app/Wellbeing*
+    rm -rf $SYSTEM/usr/srec/en-US
+    rm -rf $SYSTEM/product/app/AndroidAuto*
+    rm -rf $SYSTEM/product/app/arcore
+    rm -rf $SYSTEM/product/app/Books*
+    rm -rf $SYSTEM/product/app/CalculatorGoogle*
+    rm -rf $SYSTEM/product/app/CalendarGoogle*
+    rm -rf $SYSTEM/product/app/CarHomeGoogle
+    rm -rf $SYSTEM/product/app/Chrome*
+    rm -rf $SYSTEM/product/app/CloudPrint*
+    rm -rf $SYSTEM/product/app/DMAgent
+    rm -rf $SYSTEM/product/app/DevicePersonalizationServices
+    rm -rf $SYSTEM/product/app/Drive
+    rm -rf $SYSTEM/product/app/Duo
+    rm -rf $SYSTEM/product/app/EditorsDocs
+    rm -rf $SYSTEM/product/app/Editorssheets
+    rm -rf $SYSTEM/product/app/EditorsSlides
+    rm -rf $SYSTEM/product/app/ExchangeServices
+    rm -rf $SYSTEM/product/app/FaceLock
+    rm -rf $SYSTEM/product/app/Fitness*
+    rm -rf $SYSTEM/product/app/GalleryGo*
+    rm -rf $SYSTEM/product/app/Gcam*
+    rm -rf $SYSTEM/product/app/GCam*
+    rm -rf $SYSTEM/product/app/Gmail*
+    rm -rf $SYSTEM/product/app/GoogleCamera*
+    rm -rf $SYSTEM/product/app/GoogleCalendar*
+    rm -rf $SYSTEM/product/app/GoogleContacts*
+    rm -rf $SYSTEM/product/app/GoogleCloudPrint
+    rm -rf $SYSTEM/product/app/GoogleEarth
+    rm -rf $SYSTEM/product/app/GoogleExtshared
+    rm -rf $SYSTEM/product/app/GoogleExtShared
+    rm -rf $SYSTEM/product/app/GoogleGalleryGo
+    rm -rf $SYSTEM/product/app/GoogleGo*
+    rm -rf $SYSTEM/product/app/GoogleHome*
+    rm -rf $SYSTEM/product/app/GoogleHindiIME*
+    rm -rf $SYSTEM/product/app/GoogleKeep*
+    rm -rf $SYSTEM/product/app/GoogleJapaneseInput*
+    rm -rf $SYSTEM/product/app/GoogleLoginService*
+    rm -rf $SYSTEM/product/app/GoogleMusic*
+    rm -rf $SYSTEM/product/app/GoogleNow*
+    rm -rf $SYSTEM/product/app/GooglePhotos*
+    rm -rf $SYSTEM/product/app/GooglePinyinIME*
+    rm -rf $SYSTEM/product/app/GooglePlus
+    rm -rf $SYSTEM/product/app/GoogleTTS*
+    rm -rf $SYSTEM/product/app/GoogleVrCore*
+    rm -rf $SYSTEM/product/app/GoogleZhuyinIME*
+    rm -rf $SYSTEM/product/app/Hangouts
+    rm -rf $SYSTEM/product/app/KoreanIME*
+    rm -rf $SYSTEM/product/app/LocationHistory*
+    rm -rf $SYSTEM/product/app/Maps
+    rm -rf $SYSTEM/product/app/Markup*
+    rm -rf $SYSTEM/product/app/MicropaperPrebuilt
+    rm -rf $SYSTEM/product/app/Music2*
+    rm -rf $SYSTEM/product/app/Newsstand
+    rm -rf $SYSTEM/product/app/NexusWallpapers*
+    rm -rf $SYSTEM/product/app/Ornament
+    rm -rf $SYSTEM/product/app/Photos*
+    rm -rf $SYSTEM/product/app/PlayAutoInstallConfig*
+    rm -rf $SYSTEM/product/app/PlayGames*
+    rm -rf $SYSTEM/product/app/PrebuiltBugle
+    rm -rf $SYSTEM/product/app/PrebuiltClockGoogle
+    rm -rf $SYSTEM/product/app/PrebuiltDeskClockGoogle
+    rm -rf $SYSTEM/product/app/PrebuiltExchange3Google
+    rm -rf $SYSTEM/product/app/PrebuiltGmail
+    rm -rf $SYSTEM/product/app/PrebuiltKeep
+    rm -rf $SYSTEM/product/app/SoundAmplifierPrebuilt
+    rm -rf $SYSTEM/product/app/Street
+    rm -rf $SYSTEM/product/app/Stickers*
+    rm -rf $SYSTEM/product/app/TalkBack
+    rm -rf $SYSTEM/product/app/talkBack
+    rm -rf $SYSTEM/product/app/talkback
+    rm -rf $SYSTEM/product/app/TranslatePrebuilt
+    rm -rf $SYSTEM/product/app/Tycho
+    rm -rf $SYSTEM/product/app/Videos
+    rm -rf $SYSTEM/product/app/Wallet
+    rm -rf $SYSTEM/product/app/WallpapersBReel*
+    rm -rf $SYSTEM/product/app/YouTube*
+    rm -rf $SYSTEM/product/etc/default-permissions/default-permissions.xml
+    rm -rf $SYSTEM/product/etc/default-permissions/opengapps-permissions.xml
+    rm -rf $SYSTEM/product/etc/permissions/default-permissions.xml
+    rm -rf $SYSTEM/product/etc/permissions/privapp-permissions-elgoog.xml
+    rm -rf $SYSTEM/product/etc/permissions/privapp-permissions-google*
+    rm -rf $SYSTEM/product/etc/permissions/com.google.android.camera*
+    rm -rf $SYSTEM/product/etc/permissions/com.google.android.dialer*
+    rm -rf $SYSTEM/product/etc/permissions/com.google.android.maps*
+    rm -rf $SYSTEM/product/etc/permissions/split-permissions-google.xml
+    rm -rf $SYSTEM/product/etc/preferred-apps/google.xml
+    rm -rf $SYSTEM/product/etc/preferred-apps/google_build.xml
+    rm -rf $SYSTEM/product/etc/sysconfig/pixel_2017_exclusive.xml
+    rm -rf $SYSTEM/product/etc/sysconfig/pixel_experience_2017.xml
+    rm -rf $SYSTEM/product/etc/sysconfig/gmsexpress.xml
+    rm -rf $SYSTEM/product/etc/sysconfig/googledialergo-sysconfig.xml
+    rm -rf $SYSTEM/product/etc/sysconfig/google-hiddenapi-package-whitelist.xml
+    rm -rf $SYSTEM/product/etc/sysconfig/google.xml
+    rm -rf $SYSTEM/product/etc/sysconfig/google_build.xml
+    rm -rf $SYSTEM/product/etc/sysconfig/google_experience.xml
+    rm -rf $SYSTEM/product/etc/sysconfig/google_exclusives_enable.xml
+    rm -rf $SYSTEM/product/etc/sysconfig/go_experience.xml
+    rm -rf $SYSTEM/product/etc/sysconfig/nexus.xml
+    rm -rf $SYSTEM/product/etc/sysconfig/nga.xml
+    rm -rf $SYSTEM/product/etc/sysconfig/pixel*
+    rm -rf $SYSTEM/product/etc/sysconfig/turbo.xml
+    rm -rf $SYSTEM/product/etc/sysconfig/wellbeing.xml
+    rm -rf $SYSTEM/product/framework/com.google.android.camera*
+    rm -rf $SYSTEM/product/framework/com.google.android.dialer*
+    rm -rf $SYSTEM/product/framework/com.google.android.maps*
+    rm -rf $SYSTEM/product/framework/oat/arm/com.google.android.camera*
+    rm -rf $SYSTEM/product/framework/oat/arm/com.google.android.dialer*
+    rm -rf $SYSTEM/product/framework/oat/arm/com.google.android.maps*
+    rm -rf $SYSTEM/product/framework/oat/arm64/com.google.android.camera*
+    rm -rf $SYSTEM/product/framework/oat/arm64/com.google.android.dialer*
+    rm -rf $SYSTEM/product/framework/oat/arm64/com.google.android.maps*
+    rm -rf $SYSTEM/product/lib/libaiai-annotators.so
+    rm -rf $SYSTEM/product/lib/libcronet.70.0.3522.0.so
+    rm -rf $SYSTEM/product/lib/libfilterpack_facedetect.so
+    rm -rf $SYSTEM/product/lib/libfrsdk.so
+    rm -rf $SYSTEM/product/lib/libgcam.so
+    rm -rf $SYSTEM/product/lib/libgcam_swig_jni.so
+    rm -rf $SYSTEM/product/lib/libocr.so
+    rm -rf $SYSTEM/product/lib/libparticle-extractor_jni.so
+    rm -rf $SYSTEM/product/lib64/libbarhopper.so
+    rm -rf $SYSTEM/product/lib64/libfacenet.so
+    rm -rf $SYSTEM/product/lib64/libfilterpack_facedetect.so
+    rm -rf $SYSTEM/product/lib64/libfrsdk.so
+    rm -rf $SYSTEM/product/lib64/libgcam.so
+    rm -rf $SYSTEM/product/lib64/libgcam_swig_jni.so
+    rm -rf $SYSTEM/product/lib64/libsketchology_native.so
+    rm -rf $SYSTEM/product/overlay/GoogleConfigOverlay*
+    rm -rf $SYSTEM/product/overlay/PixelConfigOverlay*
+    rm -rf $SYSTEM/product/overlay/Gms*
+    rm -rf $SYSTEM/product/priv-app/Aiai*
+    rm -rf $SYSTEM/product/priv-app/AmbientSense*
+    rm -rf $SYSTEM/product/priv-app/AndroidAuto*
+    rm -rf $SYSTEM/product/priv-app/AndroidMigrate*
+    rm -rf $SYSTEM/product/priv-app/AndroidPlatformServices
+    rm -rf $SYSTEM/product/priv-app/CalendarGoogle*
+    rm -rf $SYSTEM/product/priv-app/CalculatorGoogle*
+    rm -rf $SYSTEM/product/priv-app/Camera*
+    rm -rf $SYSTEM/product/priv-app/CarrierServices
+    rm -rf $SYSTEM/product/priv-app/CarrierSetup
+    rm -rf $SYSTEM/product/priv-app/ConfigUpdater
+    rm -rf $SYSTEM/product/priv-app/ConnMetrics
+    rm -rf $SYSTEM/product/priv-app/DataTransferTool
+    rm -rf $SYSTEM/product/priv-app/DeviceHealthServices
+    rm -rf $SYSTEM/product/priv-app/DevicePersonalizationServices
+    rm -rf $SYSTEM/product/priv-app/DigitalWellbeing*
+    rm -rf $SYSTEM/product/priv-app/FaceLock
+    rm -rf $SYSTEM/product/priv-app/Gcam*
+    rm -rf $SYSTEM/product/priv-app/GCam*
+    rm -rf $SYSTEM/product/priv-app/GCS
+    rm -rf $SYSTEM/product/priv-app/GmsCore*
+    rm -rf $SYSTEM/product/priv-app/GoogleBackupTransport
+    rm -rf $SYSTEM/product/priv-app/GoogleCalculator*
+    rm -rf $SYSTEM/product/priv-app/GoogleCalendar*
+    rm -rf $SYSTEM/product/priv-app/GoogleCamera*
+    rm -rf $SYSTEM/product/priv-app/GoogleContacts*
+    rm -rf $SYSTEM/product/priv-app/GoogleDialer
+    rm -rf $SYSTEM/product/priv-app/GoogleExtservices
+    rm -rf $SYSTEM/product/priv-app/GoogleExtServices
+    rm -rf $SYSTEM/product/priv-app/GoogleFeedback
+    rm -rf $SYSTEM/product/priv-app/GoogleOneTimeInitializer
+    rm -rf $SYSTEM/product/priv-app/GooglePartnerSetup
+    rm -rf $SYSTEM/product/priv-app/GoogleRestore
+    rm -rf $SYSTEM/product/priv-app/GoogleServicesFramework
+    rm -rf $SYSTEM/product/priv-app/HotwordEnrollment*
+    rm -rf $SYSTEM/product/priv-app/HotWordEnrollment*
+    rm -rf $SYSTEM/product/priv-app/MaestroPrebuilt
+    rm -rf $SYSTEM/product/priv-app/matchmaker*
+    rm -rf $SYSTEM/product/priv-app/Matchmaker*
+    rm -rf $SYSTEM/product/priv-app/Phonesky
+    rm -rf $SYSTEM/product/priv-app/PixelLive*
+    rm -rf $SYSTEM/product/priv-app/PrebuiltGmsCore*
+    rm -rf $SYSTEM/product/priv-app/PixelSetupWizard*
+    rm -rf $SYSTEM/product/priv-app/RecorderPrebuilt
+    rm -rf $SYSTEM/product/priv-app/SCONE
+    rm -rf $SYSTEM/product/priv-app/Scribe*
+    rm -rf $SYSTEM/product/priv-app/SetupWizard*
+    rm -rf $SYSTEM/product/priv-app/Tag*
+    rm -rf $SYSTEM/product/priv-app/Tips*
+    rm -rf $SYSTEM/product/priv-app/Turbo*
+    rm -rf $SYSTEM/product/priv-app/Velvet
+    rm -rf $SYSTEM/product/priv-app/WallpaperPickerGoogleRelease
+    rm -rf $SYSTEM/product/priv-app/Wellbeing*
+    rm -rf $SYSTEM/product/usr/srec/en-US
+    rm -rf $SYSTEM/app/Abstruct
+    rm -rf $SYSTEM/app/BasicDreams
+    rm -rf $SYSTEM/app/BlissPapers
+    rm -rf $SYSTEM/app/BookmarkProvider
+    rm -rf $SYSTEM/app/Browser*
+    rm -rf $SYSTEM/app/Camera*
+    rm -rf $SYSTEM/app/Chromium
+    rm -rf $SYSTEM/app/ColtPapers
+    rm -rf $SYSTEM/app/EasterEgg*
+    rm -rf $SYSTEM/app/EggGame
+    rm -rf $SYSTEM/app/Email*
+    rm -rf $SYSTEM/app/ExactCalculator
+    rm -rf $SYSTEM/app/Exchange2
+    rm -rf $SYSTEM/app/Gallery*
+    rm -rf $SYSTEM/app/GugelClock
+    rm -rf $SYSTEM/app/HTMLViewer
+    rm -rf $SYSTEM/app/Jelly
+    rm -rf $SYSTEM/app/messaging
+    rm -rf $SYSTEM/app/MiXplorer*
+    rm -rf $SYSTEM/app/Music*
+    rm -rf $SYSTEM/app/Partnerbookmark*
+    rm -rf $SYSTEM/app/PartnerBookmark*
+    rm -rf $SYSTEM/app/Phonograph
+    rm -rf $SYSTEM/app/PhotoTable
+    rm -rf $SYSTEM/app/RetroMusic*
+    rm -rf $SYSTEM/app/VanillaMusic
+    rm -rf $SYSTEM/app/Via*
+    rm -rf $SYSTEM/app/QPGallery
+    rm -rf $SYSTEM/app/QuickSearchBox
+    rm -rf $SYSTEM/priv-app/AudioFX
+    rm -rf $SYSTEM/priv-app/Camera*
+    rm -rf $SYSTEM/priv-app/Eleven
+    rm -rf $SYSTEM/priv-app/MatLog
+    rm -rf $SYSTEM/priv-app/MusicFX
+    rm -rf $SYSTEM/priv-app/OmniSwitch
+    rm -rf $SYSTEM/priv-app/Snap*
+    rm -rf $SYSTEM/priv-app/Tag*
+    rm -rf $SYSTEM/priv-app/Via*
+    rm -rf $SYSTEM/priv-app/VinylMusicPlayer
+    rm -rf $SYSTEM/product/app/AboutBliss
+    rm -rf $SYSTEM/product/app/BasicDreams
+    rm -rf $SYSTEM/product/app/BlissStatistics
+    rm -rf $SYSTEM/product/app/BookmarkProvider
+    rm -rf $SYSTEM/product/app/Browser*
+    rm -rf $SYSTEM/product/app/Calendar*
+    rm -rf $SYSTEM/product/app/Camera*
+    rm -rf $SYSTEM/product/app/Dashboard
+    rm -rf $SYSTEM/product/app/DeskClock
+    rm -rf $SYSTEM/product/app/EasterEgg*
+    rm -rf $SYSTEM/product/app/Email*
+    rm -rf $SYSTEM/product/app/EmergencyInfo
+    rm -rf $SYSTEM/product/app/Etar
+    rm -rf $SYSTEM/product/app/Gallery*
+    rm -rf $SYSTEM/product/app/HTMLViewer
+    rm -rf $SYSTEM/product/app/Jelly
+    rm -rf $SYSTEM/product/app/Messaging
+    rm -rf $SYSTEM/product/app/messaging
+    rm -rf $SYSTEM/product/app/Music*
+    rm -rf $SYSTEM/product/app/Partnerbookmark*
+    rm -rf $SYSTEM/product/app/PartnerBookmark*
+    rm -rf $SYSTEM/product/app/PhotoTable*
+    rm -rf $SYSTEM/product/app/Recorder*
+    rm -rf $SYSTEM/product/app/RetroMusic*
+    rm -rf $SYSTEM/product/app/SimpleGallery
+    rm -rf $SYSTEM/product/app/Via*
+    rm -rf $SYSTEM/product/app/WallpaperZone
+    rm -rf $SYSTEM/product/app/QPGallery
+    rm -rf $SYSTEM/product/app/QuickSearchBox
+    rm -rf $SYSTEM/product/overlay/ChromeOverlay
+    rm -rf $SYSTEM/product/overlay/TelegramOverlay
+    rm -rf $SYSTEM/product/overlay/WhatsAppOverlay
+    rm -rf $SYSTEM/product/priv-app/AncientWallpaperZone
+    rm -rf $SYSTEM/product/priv-app/Camera*
+    rm -rf $SYSTEM/product/priv-app/Contacts
+    rm -rf $SYSTEM/product/priv-app/crDroidMusic
+    rm -rf $SYSTEM/product/priv-app/Dialer
+    rm -rf $SYSTEM/product/priv-app/Eleven
+    rm -rf $SYSTEM/product/priv-app/EmergencyInfo
+    rm -rf $SYSTEM/product/priv-app/Gallery2
+    rm -rf $SYSTEM/product/priv-app/MatLog
+    rm -rf $SYSTEM/product/priv-app/MusicFX
+    rm -rf $SYSTEM/product/priv-app/OmniSwitch
+    rm -rf $SYSTEM/product/priv-app/Recorder*
+    rm -rf $SYSTEM/product/priv-app/Snap*
+    rm -rf $SYSTEM/product/priv-app/Tag*
+    rm -rf $SYSTEM/product/priv-app/Via*
+    rm -rf $SYSTEM/product/priv-app/VinylMusicPlayer
+    rm -rf $SYSTEM/app/AppleNLP*
+    rm -rf $SYSTEM/app/AuroraDroid
+    rm -rf $SYSTEM/app/AuroraStore
+    rm -rf $SYSTEM/app/DejaVu*
+    rm -rf $SYSTEM/app/DroidGuard
+    rm -rf $SYSTEM/app/LocalGSM*
+    rm -rf $SYSTEM/app/LocalWiFi*
+    rm -rf $SYSTEM/app/MicroG*
+    rm -rf $SYSTEM/app/MozillaUnified*
+    rm -rf $SYSTEM/app/nlp*
+    rm -rf $SYSTEM/app/Nominatim*
+    rm -rf $SYSTEM/product/app/AppleNLP*
+    rm -rf $SYSTEM/product/app/AuroraDroid
+    rm -rf $SYSTEM/product/app/AuroraStore
+    rm -rf $SYSTEM/product/app/DejaVu*
+    rm -rf $SYSTEM/product/app/DroidGuard
+    rm -rf $SYSTEM/product/app/LocalGSM*
+    rm -rf $SYSTEM/product/app/LocalWiFi*
+    rm -rf $SYSTEM/product/app/MicroG*
+    rm -rf $SYSTEM/product/app/MozillaUnified*
+    rm -rf $SYSTEM/product/app/nlp*
+    rm -rf $SYSTEM/product/app/Nominatim*
+    rm -rf $SYSTEM/priv-app/AuroraServices
+    rm -rf $SYSTEM/priv-app/FakeStore
+    rm -rf $SYSTEM/priv-app/GmsCore
+    rm -rf $SYSTEM/priv-app/GsfProxy
+    rm -rf $SYSTEM/priv-app/MicroG*
+    rm -rf $SYSTEM/priv-app/PatchPhonesky
+    rm -rf $SYSTEM/priv-app/Phonesky
+    rm -rf $SYSTEM/product/priv-app/AuroraServices
+    rm -rf $SYSTEM/product/priv-app/FakeStore
+    rm -rf $SYSTEM/product/priv-app/GmsCore
+    rm -rf $SYSTEM/product/priv-app/GsfProxy
+    rm -rf $SYSTEM/product/priv-app/MicroG*
+    rm -rf $SYSTEM/product/priv-app/PatchPhonesky
+    rm -rf $SYSTEM/product/priv-app/Phonesky
+    rm -rf $SYSTEM/etc/default-permissions/microg*
+    rm -rf $SYSTEM/etc/default-permissions/phonesky*
+    rm -rf $SYSTEM/etc/permissions/features.xml
+    rm -rf $SYSTEM/etc/permissions/com.android.vending*
+    rm -rf $SYSTEM/etc/permissions/com.aurora.services*
+    rm -rf $SYSTEM/etc/permissions/com.google.android.backup*
+    rm -rf $SYSTEM/etc/permissions/com.google.android.gms*
+    rm -rf $SYSTEM/etc/sysconfig/microg*
+    rm -rf $SYSTEM/etc/sysconfig/nogoolag*
+    rm -rf $SYSTEM/product/etc/default-permissions/microg*
+    rm -rf $SYSTEM/product/etc/default-permissions/phonesky*
+    rm -rf $SYSTEM/product/etc/permissions/features.xml
+    rm -rf $SYSTEM/product/etc/permissions/com.android.vending*
+    rm -rf $SYSTEM/product/etc/permissions/com.aurora.services*
+    rm -rf $SYSTEM/product/etc/permissions/com.google.android.backup*
+    rm -rf $SYSTEM/product/etc/permissions/com.google.android.gms*
+    rm -rf $SYSTEM/product/etc/sysconfig/microg*
+    rm -rf $SYSTEM/product/etc/sysconfig/nogoolag*
+    rm -rf $SYSTEM/bin/nanodroid*
+    rm -rf $SYSTEM/bin/novl
+    rm -rf $SYSTEM/bin/npem
+    rm -rf $SYSTEM/bin/nprp
+    rm -rf $SYSTEM/bin/nutl
+    rm -rf $SYSTEM/xbin/nanodroid*
+    rm -rf $SYSTEM/xbin/novl
+    rm -rf $SYSTEM/xbin/npem
+    rm -rf $SYSTEM/xbin/nprp
+    rm -rf $SYSTEM/xbin/nutl
+  fi;
 }
 
 # Remove pre-installed system files
@@ -2938,7 +3355,8 @@ function post_install() {
     system_pathmap;
     recovery_actions;
     mk_component;
-    # pre_installed;
+    on_gsf;
+    pre_installed;
     pre_installed_v29;
     pre_installed_v28;
     pre_installed_v27;
