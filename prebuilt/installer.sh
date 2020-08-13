@@ -108,15 +108,18 @@ build_defaults() {
   TMP_ADDON="$UNZIP_DIR/tmp_addon";
   TMP_SYS="$UNZIP_DIR/tmp_sys";
   TMP_SYS_ROOT="$UNZIP_DIR/tmp_sys_root";
+  TMP_SYS_AOSP="$UNZIP_DIR/tmp_sys_aosp";
   TMP_PRIV="$UNZIP_DIR/tmp_priv";
   TMP_PRIV_ROOT="$UNZIP_DIR/tmp_priv_root";
   TMP_PRIV_SETUP="$UNZIP_DIR/tmp_priv_setup";
+  TMP_PRIV_AOSP="$UNZIP_DIR/tmp_priv_aosp";
   TMP_LIB="$UNZIP_DIR/tmp_lib";
   TMP_LIB64="$UNZIP_DIR/tmp_lib64";
   TMP_FRAMEWORK="$UNZIP_DIR/tmp_framework";
   TMP_CONFIG="$UNZIP_DIR/tmp_config";
   TMP_DEFAULT_PERM="$UNZIP_DIR/tmp_default";
   TMP_G_PERM="$UNZIP_DIR/tmp_perm";
+  TMP_G_PERM_AOSP="$UNZIP_DIR/tmp_perm_aosp";
   TMP_G_PREF="$UNZIP_DIR/tmp_pref";
   TMP_PERM_ROOT="$UNZIP_DIR/tmp_perm_root";
   # Set logging
@@ -172,37 +175,37 @@ on_partition_check() {
 
 # Set fstab for getting mount point
 fstab() {
-  filesystem="/etc/fstab"
+  filesystem="/etc/fstab";
   if [ -f "/etc/recovery.fstab" ]; then
-    filesystem="/etc/recovery.fstab"
+    filesystem="/etc/recovery.fstab";
   fi;
 }
 
 # Set vendor mount point
 vendor_mnt() {
-  device_vendorpartition=false
+  device_vendorpartition="false";
   if [ -d /vendor ] && [ -n "$(cat /etc/fstab | grep /vendor)" ]; then
-    device_vendorpartition=true
-    VENDOR=/vendor
+    device_vendorpartition="true";
+    VENDOR="/vendor";
   fi;
 }
 
 # Detect A/B partition layout https://source.android.com/devices/tech/ota/ab_updates
 # and system-as-root https://source.android.com/devices/bootloader/system-as-root
 set_mount() {
-  device_abpartition=false
+  device_abpartition="false";
   if [ "$system_as_root" == "true" ]; then
     if [ ! -z "$active_slot" ]; then
-      device_abpartition=true
+      device_abpartition="true";
     fi;
   fi;
 }
 
 # Detect dynamic partition layout https://source.android.com/devices/tech/ota/dynamic_partitions/implement
 super_partition() {
-  device_superpartition=false
+  device_superpartition="false";
   if [ "$dynamic_partitions" == "true" ]; then
-    device_superpartition=true
+    device_superpartition="true";
   fi;
 }
 
@@ -219,9 +222,9 @@ setup_mountpoint() {
 mount_apex() {
   if [ -d /system_root/system ] && [ -n "$(cat /etc/fstab | grep /system_root)" ];
   then
-    SYSTEM=/system_root/system
+    SYSTEM="/system_root/system";
   else
-    SYSTEM=/system/system
+    SYSTEM="/system/system";
   fi;
   test -d $SYSTEM/apex || return 1
   local apex dest loop minorx num
@@ -298,7 +301,7 @@ mount_all() {
   mount -o ro -t auto /persist 2>/dev/null;
   if [ "$dynamic_partitions" == "true" ]; then
     # Set mount point for dynamic partition
-    ANDROID_ROOT=/system
+    ANDROID_ROOT="/system";
     if [ "$device_abpartition" == "true" ]; then
       for block in system vendor; do
         for slot in "" _a _b; do
@@ -329,9 +332,9 @@ mount_all() {
     fi;
   else
     if [ -d /system_root ] && [ -n "$(cat /etc/fstab | grep /system_root)" ]; then
-      ANDROID_ROOT=/system_root
+      ANDROID_ROOT="/system_root";
     else
-      ANDROID_ROOT=/system
+      ANDROID_ROOT="/system";
     fi;
     mount -o ro -t auto $ANDROID_ROOT 2>/dev/null;
     mount -o rw,remount -t auto $ANDROID_ROOT
@@ -381,19 +384,19 @@ system_layout() {
     SYSTEM=$ANDROID_ROOT
   else
     if [ -f /system_root/system/build.prop ] && [ -n "$(cat /etc/fstab | grep /system_root)" ]; then
-      SYSTEM=/system_root/system
+      SYSTEM="/system_root/system";
     elif [ -f /system/system/build.prop ] && [ -n "$(cat /etc/fstab | grep /system)" ]; then
-      SYSTEM=/system/system
+      SYSTEM="/system/system";
     elif [ "$device_abpartition" == "true" ]; then
-      SYSTEM=/system/system
+      SYSTEM="/system/system";
     elif [ "$device_abpartition" == "true" ] && [ -n "$(cat /etc/fstab | grep /system_root)" ]; then
-      SYSTEM=/system_root/system
+      SYSTEM="/system_root/system";
     elif [ "$device_abpartition" == "true" ] && [ -n "$(cat /etc/fstab | grep /system)" ]; then
-      SYSTEM=/system/system
+      SYSTEM="/system/system";
     elif [ -f /system/build.prop ] && [ -n "$(cat /etc/fstab | grep /system_root)" ]; then
-      SYSTEM=/system
+      SYSTEM="/system";
     else
-      SYSTEM=/system
+      SYSTEM="/system";
     fi;
   fi;
 }
@@ -446,14 +449,14 @@ boot_SYS() {
 # Bind mountpoint /system to /system_root if we have system-as-root
 on_AB() {
   if [ -f /system/init.rc ]; then
-    system_as_root=true
+    system_as_root="true";
     [ -L /system_root ] && rm -f /system_root
     mkdir /system_root 2>/dev/null;
     mount --move /system /system_root
     mount -o bind /system_root/system /system
   else
     grep ' / ' /proc/mounts | grep -qv 'rootfs' || grep -q ' /system_root ' /proc/mounts \
-    && system_as_root=true || system_as_root=false
+    && system_as_root="true" || system_as_root="false";
   fi;
 }
 
@@ -681,10 +684,30 @@ on_version_check() {
   if [ "$ZIPTYPE" == "addon" ]; then
     android_sdk="$(get_prop "ro.build.version.sdk")";
   else
-    android_sdk="$(get_prop "ro.build.version.sdk")";
-    supported_sdk="";
-    android_version="$(get_prop "ro.build.version.release")";
-    supported_version="";
+    if [ "$TARGET_ANDROID_SDK" == "29" ]; then
+      android_sdk="$(get_prop "ro.build.version.sdk")";
+      supported_sdk="29";
+      android_version="$(get_prop "ro.build.version.release")";
+      supported_version="10";
+    fi;
+    if [ "$TARGET_ANDROID_SDK" == "28" ]; then
+      android_sdk="$(get_prop "ro.build.version.sdk")";
+      supported_sdk="28";
+      android_version="$(get_prop "ro.build.version.release")";
+      supported_version="9";
+    fi;
+    if [ "$TARGET_ANDROID_SDK" == "27" ]; then
+      android_sdk="$(get_prop "ro.build.version.sdk")";
+      supported_sdk="27";
+      android_version="$(get_prop "ro.build.version.release")";
+      supported_version="8.1.0";
+    fi;
+    if [ "$TARGET_ANDROID_SDK" == "25" ]; then
+      android_sdk="$(get_prop "ro.build.version.sdk")";
+      supported_sdk="25";
+      android_version="$(get_prop "ro.build.version.release")";
+      supported_version="7.1.2";
+    fi;
   fi;
 }
 
@@ -715,7 +738,12 @@ on_platform() {
 }
 
 build_platform() {
-  ANDROID_PLATFORM=""
+  if [ "$TARGET_ANDROID_ARCH" == "ARM" ]; then
+    ANDROID_PLATFORM="$ANDROID_PLATFORM_ARM32"
+  fi;
+  if [ "$TARGET_ANDROID_ARCH" == "ARM64" ]; then
+    ANDROID_PLATFORM="$ANDROID_PLATFORM_ARM64"
+  fi;
 }
 
 # Set system data check property
@@ -766,10 +794,10 @@ check_platform() {
 
 # Delete listed packages permissions
 clean_inst() {
-  SYSTEM_DATA=false
+  SYSTEM_DATA="false";
   # Check if system is already booted with GApps installed
   if [ "$android_data" == "$supported_target" ]; then
-    SYSTEM_DATA=true
+    SYSTEM_DATA="true";
   fi;
   if [ "$SYSTEM_DATA" == "false" ]; then
     # Did this 6.0+ system already boot and generated runtime permissions
@@ -783,20 +811,58 @@ clean_inst() {
   fi;
 }
 
-# Check availablility of pre-installed GApps
-on_gsf() {
-  GSF="false"
+on_gsf_check() {
+  setsec="/data/system/users/0/settings_secure.xml"
+  GSF="false";
   # Add support for Paranoid Android
   if [ -n "$(cat $SYSTEM/build.prop | grep ro.pa.device)" ]; then
-    GSF="true"
+    GSF="true";
   fi;
   # Add support for PixelExperience
   if [ -n "$(cat $SYSTEM/build.prop | grep org.pixelexperience.version)" ]; then
-    GSF="true"
+    GSF="true";
   fi;
   # Add support for EvolutionX
   if [ -n "$(cat $SYSTEM/build.prop | grep org.evolution.device)" ]; then
-    GSF="true"
+    GSF="true";
+  fi;
+  if [ "$GSF" == "true" ]; then
+    AOSP_PKG_INSTALL="true";
+  fi;
+  if [ "$android_sdk" == "$supported_sdk_v27" ]; then
+    AOSP_PKG_INSTALL="false";
+  fi;
+  if [ "$android_sdk" == "$supported_sdk_v25" ]; then
+    AOSP_PKG_INSTALL="false";
+  fi;
+  # Check settings default XML file
+  # Prevent merge conflicts on dirty install for ROM with gapps
+  if [ -f "$setsec" ]; then
+    SKIP_DEFAULT_CHECK="true";
+  else
+    SKIP_DEFAULT_CHECK="false";
+  fi;
+}
+
+set_aosp_default() {
+  if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+    # set AOSP Dialer as default; based on the work of osm0sis @ xda-developers
+    setver="122"  # lowest version in MM, tagged at 6.0.0
+    setsec="/data/system/users/0/settings_secure.xml"
+    if [ "$SKIP_DEFAULT_CHECK" == "false" ]; then
+      if [ ! -d "/data/system/users/0" ]; then
+        install -d "/data/system/users/0"
+        chown -R 1000:1000 "/data/system"
+        chmod -R 775 "/data/system"
+        chmod 700 "/data/system/users/0"
+      fi;
+      { echo -e "<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>\r"
+      echo -e '<settings version="'$setver'">\r'
+      echo -e '  <setting id="1" name="dialer_default_application" value="com.android.dialer" package="android" defaultValue="com.android.dialer" defaultSysSet="true" />\r'
+      echo -e '</settings>'; } > "$setsec"
+    fi;
+    chown 1000:1000 "$setsec"
+    chmod 600 "$setsec"
   fi;
 }
 
@@ -893,30 +959,36 @@ mk_component() {
     mkdir $UNZIP_DIR/tmp_addon
     mkdir $UNZIP_DIR/tmp_sys
     mkdir $UNZIP_DIR/tmp_sys_root
+    mkdir $UNZIP_DIR/tmp_sys_aosp
     mkdir $UNZIP_DIR/tmp_priv
     mkdir $UNZIP_DIR/tmp_priv_root
     mkdir $UNZIP_DIR/tmp_priv_setup
+    mkdir $UNZIP_DIR/tmp_priv_aosp
     mkdir $UNZIP_DIR/tmp_lib
     mkdir $UNZIP_DIR/tmp_lib64
     mkdir $UNZIP_DIR/tmp_framework
     mkdir $UNZIP_DIR/tmp_config
     mkdir $UNZIP_DIR/tmp_default
     mkdir $UNZIP_DIR/tmp_perm
+    mkdir $UNZIP_DIR/tmp_perm_aosp
     mkdir $UNZIP_DIR/tmp_pref
     mkdir $UNZIP_DIR/tmp_perm_root
     chmod 0755 $UNZIP_DIR
     chmod 0755 $UNZIP_DIR/tmp_addon
     chmod 0755 $UNZIP_DIR/tmp_sys
     chmod 0755 $UNZIP_DIR/tmp_sys_root
+    chmod 0755 $UNZIP_DIR/tmp_sys_aosp
     chmod 0755 $UNZIP_DIR/tmp_priv
     chmod 0755 $UNZIP_DIR/tmp_priv_root
     chmod 0755 $UNZIP_DIR/tmp_priv_setup
+    chmod 0755 $UNZIP_DIR/tmp_priv_aosp
     chmod 0755 $UNZIP_DIR/tmp_lib
     chmod 0755 $UNZIP_DIR/tmp_lib64
     chmod 0755 $UNZIP_DIR/tmp_framework
     chmod 0755 $UNZIP_DIR/tmp_config
     chmod 0755 $UNZIP_DIR/tmp_default
     chmod 0755 $UNZIP_DIR/tmp_perm
+    chmod 0755 $UNZIP_DIR/tmp_perm_aosp
     chmod 0755 $UNZIP_DIR/tmp_pref
     chmod 0755 $UNZIP_DIR/tmp_perm_root
   else
@@ -1438,10 +1510,17 @@ pre_installed() {
   fi;
 }
 
+# Limit AOSP app installation to SDK29 and SDK28
+lim_aosp_install() {
+  if [ "$android_sdk" == "$supported_sdk_v29" ] || [ "$android_sdk" == "$supported_sdk_v28" ]; then
+    pre_installed;
+  fi;
+}
+
 # Remove pre-installed system files
 pre_installed_v29() {
   if [ "$android_sdk" == "$supported_sdk_v29" ]; then
-    del() {
+    zip_pkg() {
       rm -rf $SYSTEM_APP/GoogleCalendarSyncAdapter
       rm -rf $SYSTEM_APP/GoogleContactsSyncAdapter
       rm -rf $SYSTEM_APP/ExtShared
@@ -1484,11 +1563,11 @@ pre_installed_v29() {
       rm -rf $SYSTEM/etc/g.prop
     }
     # Delete pre-installed APKs from product
-    del;
+    zip_pkg;
     # Temporary set system pathmap
     tmp_pathmap;
     # Delete pre-installed APKs from system
-    del;
+    zip_pkg;
     # Set product pathmap for installation
     product_pathmap;
   fi;
@@ -1630,6 +1709,18 @@ set_sparse() {
     for dir in $dir_list; do
         chmod 0755 "$SYSTEM_APP/${dir}";
     done
+    # Add AOSP apps installation for ROMs shipped with GApps
+    if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+      file_list="$(find "$TMP_SYS_AOSP/" -mindepth 1 -type f | cut -d/ -f5-)"
+      dir_list="$(find "$TMP_SYS_AOSP/" -mindepth 1 -type d | cut -d/ -f5-)"
+      for file in $file_list; do
+          install -D "$TMP_SYS_AOSP/${file}" "$SYSTEM_APP/${file}"
+          chmod 0644 "$SYSTEM_APP/${file}";
+      done
+      for dir in $dir_list; do
+          chmod 0755 "$SYSTEM_APP/${dir}";
+      done
+    fi;
   }
 
   send_sparse_2() {
@@ -1642,6 +1733,18 @@ set_sparse() {
     for dir in $dir_list; do
         chmod 0755 "$SYSTEM_PRIV_APP/${dir}";
     done
+    # Add AOSP apps installation for ROMs shipped with GApps
+    if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+      file_list="$(find "$TMP_PRIV_AOSP/" -mindepth 1 -type f | cut -d/ -f5-)"
+      dir_list="$(find "$TMP_PRIV_AOSP/" -mindepth 1 -type d | cut -d/ -f5-)"
+      for file in $file_list; do
+          install -D "$TMP_PRIV_AOSP/${file}" "$SYSTEM_PRIV_APP/${file}"
+          chmod 0644 "$SYSTEM_PRIV_APP/${file}";
+      done
+      for dir in $dir_list; do
+          chmod 0755 "$SYSTEM_PRIV_APP/${dir}";
+      done
+    fi;
   }
 
   send_sparse_3() {
@@ -1726,6 +1829,18 @@ set_sparse() {
     for dir in $dir_list; do
         chmod 0755 "$SYSTEM_ETC_PERM/${dir}";
     done
+    # Ship privileged permissions XML files for AOSP apps
+    if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+      file_list="$(find "$TMP_G_PERM_AOSP/" -mindepth 1 -type f | cut -d/ -f5-)"
+      dir_list="$(find "$TMP_G_PERM_AOSP/" -mindepth 1 -type d | cut -d/ -f5-)"
+      for file in $file_list; do
+          install -D "$TMP_G_PERM_AOSP/${file}" "$SYSTEM_ETC_PERM/${file}"
+          chmod 0644 "$SYSTEM_ETC_PERM/${file}";
+      done
+      for dir in $dir_list; do
+          chmod 0755 "$SYSTEM_ETC_PERM/${dir}";
+      done
+    fi;
   }
 
   send_sparse_10() {
@@ -1810,10 +1925,24 @@ sdk_v29_install() {
       zip/sys_Lib.tar.xz
       zip/sys_Lib64.tar.xz
       zip/sys_Permissions.tar.xz
-      zip/sys_Pref_Permission.tar.xz"
+      zip/sys_Pref_Permission.tar.xz";
 
     # Unzip system files from installer
     unpack_zip;
+
+    if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+      ZIP="
+        zip/core/aosp/priv_app_Contacts.tar.xz
+        zip/core/aosp/priv_app_Dialer.tar.xz
+        zip/core/aosp/priv_app_ManagedProvisioning.tar.xz
+        zip/core/aosp/priv_app_Provision.tar.xz
+        zip/sys/aosp/sys_app_Messaging.tar.xz
+        zip/sys_Permissions_AOSP.tar.xz";
+
+      # Re-define unzip function for AOSP apps
+      # with similar target
+      unpack_zip;
+    fi;
 
     # Unpack system files
     extract_app() {
@@ -1829,6 +1958,10 @@ sdk_v29_install() {
       tar -xf $ZIP_FILE/sys/sys_app_GoogleExtShared.tar.xz -C $TMP_SYS;
       tar -xf $ZIP_FILE/sys/sys_app_MarkupGoogle.tar.xz -C $TMP_SYS;
       tar -xf $ZIP_FILE/sys/sys_app_SoundPickerPrebuilt.tar.xz -C $TMP_SYS;
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        tar tvf $ZIP_FILE/sys/aosp/sys_app_Messaging.tar.xz >> $LOG;
+        tar -xf $ZIP_FILE/sys/aosp/sys_app_Messaging.tar.xz -C $TMP_SYS_AOSP;
+      fi;
       echo "- Done" >> $LOG;
       echo "-----------------------------------" >> $LOG;
       echo "- Unpack PRIV-APP Files" >> $LOG;
@@ -1842,6 +1975,16 @@ sdk_v29_install() {
       tar -xf $ZIP_FILE/core/priv_app_GoogleServicesFramework.tar.xz -C $TMP_PRIV;
       tar -xf $ZIP_FILE/core/priv_app_Phonesky.tar.xz -C $TMP_PRIV;
       tar -xf $ZIP_FILE/core/priv_app_PrebuiltGmsCoreQt.tar.xz -C $TMP_PRIV;
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        tar tvf $ZIP_FILE/core/aosp/priv_app_Contacts.tar.xz >> $LOG;
+        tar tvf $ZIP_FILE/core/aosp/priv_app_Dialer.tar.xz >> $LOG;
+        tar tvf $ZIP_FILE/core/aosp/priv_app_ManagedProvisioning.tar.xz >> $LOG;
+        tar tvf $ZIP_FILE/core/aosp/priv_app_Provision.tar.xz >> $LOG;
+        tar -xf $ZIP_FILE/core/aosp/priv_app_Contacts.tar.xz -C $TMP_PRIV_AOSP;
+        tar -xf $ZIP_FILE/core/aosp/priv_app_Dialer.tar.xz -C $TMP_PRIV_AOSP;
+        tar -xf $ZIP_FILE/core/aosp/priv_app_ManagedProvisioning.tar.xz -C $TMP_PRIV_AOSP;
+        tar -xf $ZIP_FILE/core/aosp/priv_app_Provision.tar.xz -C $TMP_PRIV_AOSP;
+      fi;
       echo "- Done" >> $LOG;
       echo "-----------------------------------" >> $LOG;
       echo "- Unpack Framework Files" >> $LOG;
@@ -1868,6 +2011,10 @@ sdk_v29_install() {
       tar -xf $ZIP_FILE/sys_Default_Permission.tar.xz -C $TMP_DEFAULT_PERM;
       tar -xf $ZIP_FILE/sys_Permissions.tar.xz -C $TMP_G_PERM;
       tar -xf $ZIP_FILE/sys_Pref_Permission.tar.xz -C $TMP_G_PREF;
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        tar tvf $ZIP_FILE/sys_Permissions_AOSP.tar.xz >> $LOG;
+        tar -xf $ZIP_FILE/sys_Permissions_AOSP.tar.xz -C $TMP_G_PERM_AOSP;
+      fi;
       echo "- Done" >> $LOG;
       echo "-----------------------------------" >> $LOG;
       echo "- Installation Complete" >> $LOG;
@@ -1888,6 +2035,10 @@ sdk_v29_install() {
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleExtShared/GoogleExtShared.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/MarkupGoogle/MarkupGoogle.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/SoundPickerPrebuilt/SoundPickerPrebuilt.apk";
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/Messaging";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/Messaging/Messaging.apk";
+      fi;
     }
 
     selinux_context_sp2() {
@@ -1901,6 +2052,16 @@ sdk_v29_install() {
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Phonesky/Phonesky.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/PrebuiltGmsCoreQt/PrebuiltGmsCoreQt.apk";
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Contacts";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Dialer";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/ManagedProvisioning";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Provision";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Contacts/Contacts.apk";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Dialer/Dialer.apk";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/ManagedProvisioning/ManagedProvisioning.apk";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Provision/Provision.apk";
+      fi;
     }
 
     selinux_context_sf3() {
@@ -1940,6 +2101,12 @@ sdk_v29_install() {
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_CONFIG/pixel_experience_2019.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_CONFIG/whitelist_com.android.omadm.service.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM/etc/g.prop";
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PERM/com.android.contacts.xml";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PERM/com.android.dialer.xml";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PERM/com.android.managedprovisioning.xml";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PERM/com.android.provision.xml";
+      fi;
     }
     # end selinux method
 
@@ -1955,6 +2122,13 @@ sdk_v29_install() {
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk $ZIPALIGN_OUTFILE/GoogleServicesFramework.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk $ZIPALIGN_OUTFILE/Phonesky.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/PrebuiltGmsCoreQt/PrebuiltGmsCoreQt.apk $ZIPALIGN_OUTFILE/PrebuiltGmsCoreQt.apk >> $ZIPALIGN_LOG;
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        $ZIPALIGN_TOOL -p -v 4 $SYSTEM_APP/Messaging/Messaging.apk $ZIPALIGN_OUTFILE/Messaging.apk >> $ZIPALIGN_LOG;
+        $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/Contacts/Contacts.apk $ZIPALIGN_OUTFILE/Contacts.apk >> $ZIPALIGN_LOG;
+        $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/Dialer/Dialer.apk $ZIPALIGN_OUTFILE/Dialer.apk >> $ZIPALIGN_LOG;
+        $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/ManagedProvisioning/ManagedProvisioning.apk $ZIPALIGN_OUTFILE/ManagedProvisioning.apk >> $ZIPALIGN_LOG;
+        $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/Provision/Provision.apk $ZIPALIGN_OUTFILE/Provision.apk >> $ZIPALIGN_LOG;
+      fi;
     }
 
     pre_opt() {
@@ -1968,6 +2142,13 @@ sdk_v29_install() {
       rm -rf $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk
       rm -rf $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk
       rm -rf $SYSTEM_PRIV_APP/PrebuiltGmsCoreQt/PrebuiltGmsCoreQt.apk
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        rm -rf $SYSTEM_APP/Messaging/Messaging.apk
+        rm -rf $SYSTEM_PRIV_APP/Contacts/Contacts.apk
+        rm -rf $SYSTEM_PRIV_APP/Dialer/Dialer.apk
+        rm -rf $SYSTEM_PRIV_APP/ManagedProvisioning/ManagedProvisioning.apk
+        rm -rf $SYSTEM_PRIV_APP/Provision/Provision.apk
+      fi;
     }
 
     add_opt() {
@@ -1981,6 +2162,13 @@ sdk_v29_install() {
       cp -f $ZIPALIGN_OUTFILE/GoogleServicesFramework.apk $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk
       cp -f $ZIPALIGN_OUTFILE/Phonesky.apk $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk
       cp -f $ZIPALIGN_OUTFILE/PrebuiltGmsCoreQt.apk $SYSTEM_PRIV_APP/PrebuiltGmsCoreQt/PrebuiltGmsCoreQt.apk
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        cp -f $ZIPALIGN_OUTFILE/Messaging.apk $SYSTEM_APP/Messaging/Messaging.apk
+        cp -f $ZIPALIGN_OUTFILE/Contacts.apk $SYSTEM_PRIV_APP/Contacts/Contacts.apk
+        cp -f $ZIPALIGN_OUTFILE/Dialer.apk $SYSTEM_PRIV_APP/Dialer/Dialer.apk
+        cp -f $ZIPALIGN_OUTFILE/ManagedProvisioning.apk $SYSTEM_PRIV_APP/ManagedProvisioning/ManagedProvisioning.apk
+        cp -f $ZIPALIGN_OUTFILE/Provision.apk $SYSTEM_PRIV_APP/Provision/Provision.apk
+      fi;
     }
 
     perm_opt() {
@@ -1994,6 +2182,13 @@ sdk_v29_install() {
       chmod 0644 $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk
       chmod 0644 $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk
       chmod 0644 $SYSTEM_PRIV_APP/PrebuiltGmsCoreQt/PrebuiltGmsCoreQt.apk
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        chmod 0644 $SYSTEM_APP/Messaging/Messaging.apk
+        chmod 0644 $SYSTEM_PRIV_APP/Contacts/Contacts.apk
+        chmod 0644 $SYSTEM_PRIV_APP/Dialer/Dialer.apk
+        chmod 0644 $SYSTEM_PRIV_APP/ManagedProvisioning/ManagedProvisioning.apk
+        chmod 0644 $SYSTEM_PRIV_APP/Provision/Provision.apk
+      fi;
     }
     # end opt method
 
@@ -2046,10 +2241,24 @@ sdk_v28_install() {
       zip/sys_Lib.tar.xz
       zip/sys_Lib64.tar.xz
       zip/sys_Permissions.tar.xz
-      zip/sys_Pref_Permission.tar.xz"
+      zip/sys_Pref_Permission.tar.xz";
 
     # Unzip system files from installer
     unpack_zip;
+
+    if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+      ZIP="
+        zip/core/aosp/priv_app_Contacts.tar.xz
+        zip/core/aosp/priv_app_Dialer.tar.xz
+        zip/core/aosp/priv_app_ManagedProvisioning.tar.xz
+        zip/core/aosp/priv_app_Provision.tar.xz
+        zip/sys/aosp/sys_app_Messaging.tar.xz
+        zip/sys_Permissions_AOSP.tar.xz";
+
+      # Re-define unzip function for AOSP apps
+      # with similar target
+      unpack_zip;
+    fi;
 
     # Unpack system files
     extract_app() {
@@ -2067,6 +2276,10 @@ sdk_v28_install() {
       tar -xf $ZIP_FILE/sys/sys_app_GoogleExtShared.tar.xz -C $TMP_SYS;
       tar -xf $ZIP_FILE/sys/sys_app_MarkupGoogle.tar.xz -C $TMP_SYS;
       tar -xf $ZIP_FILE/sys/sys_app_SoundPickerPrebuilt.tar.xz -C $TMP_SYS;
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        tar tvf $ZIP_FILE/sys/aosp/sys_app_Messaging.tar.xz >> $LOG;
+        tar -xf $ZIP_FILE/sys/aosp/sys_app_Messaging.tar.xz -C $TMP_SYS_AOSP;
+      fi;
       echo "- Done" >> $LOG;
       echo "-----------------------------------" >> $LOG;
       echo "- Unpack PRIV-APP Files" >> $LOG;
@@ -2080,6 +2293,16 @@ sdk_v28_install() {
       tar -xf $ZIP_FILE/core/priv_app_GoogleServicesFramework.tar.xz -C $TMP_PRIV;
       tar -xf $ZIP_FILE/core/priv_app_Phonesky.tar.xz -C $TMP_PRIV;
       tar -xf $ZIP_FILE/core/priv_app_PrebuiltGmsCorePi.tar.xz -C $TMP_PRIV;
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        tar tvf $ZIP_FILE/core/aosp/priv_app_Contacts.tar.xz >> $LOG;
+        tar tvf $ZIP_FILE/core/aosp/priv_app_Dialer.tar.xz >> $LOG;
+        tar tvf $ZIP_FILE/core/aosp/priv_app_ManagedProvisioning.tar.xz >> $LOG;
+        tar tvf $ZIP_FILE/core/aosp/priv_app_Provision.tar.xz >> $LOG;
+        tar -xf $ZIP_FILE/core/aosp/priv_app_Contacts.tar.xz -C $TMP_PRIV_AOSP;
+        tar -xf $ZIP_FILE/core/aosp/priv_app_Dialer.tar.xz -C $TMP_PRIV_AOSP;
+        tar -xf $ZIP_FILE/core/aosp/priv_app_ManagedProvisioning.tar.xz -C $TMP_PRIV_AOSP;
+        tar -xf $ZIP_FILE/core/aosp/priv_app_Provision.tar.xz -C $TMP_PRIV_AOSP;
+      fi;
       echo "- Done" >> $LOG;
       echo "-----------------------------------" >> $LOG;
       echo "- Unpack Framework Files" >> $LOG;
@@ -2106,6 +2329,10 @@ sdk_v28_install() {
       tar -xf $ZIP_FILE/sys_Default_Permission.tar.xz -C $TMP_DEFAULT_PERM;
       tar -xf $ZIP_FILE/sys_Permissions.tar.xz -C $TMP_G_PERM;
       tar -xf $ZIP_FILE/sys_Pref_Permission.tar.xz -C $TMP_G_PREF;
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        tar tvf $ZIP_FILE/sys_Permissions_AOSP.tar.xz >> $LOG;
+        tar -xf $ZIP_FILE/sys_Permissions_AOSP.tar.xz -C $TMP_G_PERM_AOSP;
+      fi;
       echo "- Done" >> $LOG;
       echo "-----------------------------------" >> $LOG;
       echo "- Installation Complete" >> $LOG;
@@ -2128,6 +2355,10 @@ sdk_v28_install() {
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleExtShared/GoogleExtShared.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/MarkupGoogle/MarkupGoogle.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/SoundPickerPrebuilt/SoundPickerPrebuilt.apk";
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/Messaging";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/Messaging/Messaging.apk";
+      fi;
     }
 
     selinux_context_sp2() {
@@ -2141,6 +2372,16 @@ sdk_v28_install() {
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Phonesky/Phonesky.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/PrebuiltGmsCorePi/PrebuiltGmsCorePi.apk";
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Contacts";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Dialer";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/ManagedProvisioning";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Provision";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Contacts/Contacts.apk";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Dialer/Dialer.apk";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/ManagedProvisioning/ManagedProvisioning.apk";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Provision/Provision.apk";
+      fi;
     }
 
     selinux_context_sf3() {
@@ -2178,6 +2419,12 @@ sdk_v28_install() {
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_CONFIG/google_exclusives_enable.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_CONFIG/google-hiddenapi-package-whitelist.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM/etc/g.prop";
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PERM/com.android.contacts.xml";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PERM/com.android.dialer.xml";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PERM/com.android.managedprovisioning.xml";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PERM/com.android.provision.xml";
+      fi;
     }
     # end selinux method
 
@@ -2194,6 +2441,13 @@ sdk_v28_install() {
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk $ZIPALIGN_OUTFILE/GoogleServicesFramework.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk $ZIPALIGN_OUTFILE/Phonesky.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/PrebuiltGmsCorePi/PrebuiltGmsCorePi.apk $ZIPALIGN_OUTFILE/PrebuiltGmsCorePi.apk >> $ZIPALIGN_LOG;
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        $ZIPALIGN_TOOL -p -v 4 $SYSTEM_APP/Messaging/Messaging.apk $ZIPALIGN_OUTFILE/Messaging.apk >> $ZIPALIGN_LOG;
+        $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/Contacts/Contacts.apk $ZIPALIGN_OUTFILE/Contacts.apk >> $ZIPALIGN_LOG;
+        $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/Dialer/Dialer.apk $ZIPALIGN_OUTFILE/Dialer.apk >> $ZIPALIGN_LOG;
+        $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/ManagedProvisioning/ManagedProvisioning.apk $ZIPALIGN_OUTFILE/ManagedProvisioning.apk >> $ZIPALIGN_LOG;
+        $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/Provision/Provision.apk $ZIPALIGN_OUTFILE/Provision.apk >> $ZIPALIGN_LOG;
+      fi;
     }
 
     pre_opt() {
@@ -2208,6 +2462,13 @@ sdk_v28_install() {
       rm -rf $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk
       rm -rf $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk
       rm -rf $SYSTEM_PRIV_APP/PrebuiltGmsCorePi/PrebuiltGmsCorePi.apk
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        rm -rf $SYSTEM_APP/Messaging/Messaging.apk
+        rm -rf $SYSTEM_PRIV_APP/Contacts/Contacts.apk
+        rm -rf $SYSTEM_PRIV_APP/Dialer/Dialer.apk
+        rm -rf $SYSTEM_PRIV_APP/ManagedProvisioning/ManagedProvisioning.apk
+        rm -rf $SYSTEM_PRIV_APP/Provision/Provision.apk
+      fi;
     }
 
     add_opt() {
@@ -2222,6 +2483,13 @@ sdk_v28_install() {
       cp -f $ZIPALIGN_OUTFILE/GoogleServicesFramework.apk $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk
       cp -f $ZIPALIGN_OUTFILE/Phonesky.apk $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk
       cp -f $ZIPALIGN_OUTFILE/PrebuiltGmsCorePi.apk $SYSTEM_PRIV_APP/PrebuiltGmsCorePi/PrebuiltGmsCorePi.apk
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        cp -f $ZIPALIGN_OUTFILE/Messaging.apk $SYSTEM_APP/Messaging/Messaging.apk
+        cp -f $ZIPALIGN_OUTFILE/Contacts.apk $SYSTEM_PRIV_APP/Contacts/Contacts.apk
+        cp -f $ZIPALIGN_OUTFILE/Dialer.apk $SYSTEM_PRIV_APP/Dialer/Dialer.apk
+        cp -f $ZIPALIGN_OUTFILE/ManagedProvisioning.apk $SYSTEM_PRIV_APP/ManagedProvisioning/ManagedProvisioning.apk
+        cp -f $ZIPALIGN_OUTFILE/Provision.apk $SYSTEM_PRIV_APP/Provision/Provision.apk
+      fi;
     }
 
     perm_opt() {
@@ -2236,6 +2504,13 @@ sdk_v28_install() {
       chmod 0644 $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk
       chmod 0644 $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk
       chmod 0644 $SYSTEM_PRIV_APP/PrebuiltGmsCorePi/PrebuiltGmsCorePi.apk
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        chmod 0644 $SYSTEM_APP/Messaging/Messaging.apk
+        chmod 0644 $SYSTEM_PRIV_APP/Contacts/Contacts.apk
+        chmod 0644 $SYSTEM_PRIV_APP/Dialer/Dialer.apk
+        chmod 0644 $SYSTEM_PRIV_APP/ManagedProvisioning/ManagedProvisioning.apk
+        chmod 0644 $SYSTEM_PRIV_APP/Provision/Provision.apk
+      fi;
     }
     # end opt method
 
@@ -2286,10 +2561,24 @@ sdk_v27_install() {
       zip/sys_Lib.tar.xz
       zip/sys_Lib64.tar.xz
       zip/sys_Permissions.tar.xz
-      zip/sys_Pref_Permission.tar.xz"
+      zip/sys_Pref_Permission.tar.xz";
 
     # Unzip system files from installer
     unpack_zip;
+
+    if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+      ZIP="
+        zip/core/aosp/priv_app_Contacts.tar.xz
+        zip/core/aosp/priv_app_Dialer.tar.xz
+        zip/core/aosp/priv_app_ManagedProvisioning.tar.xz
+        zip/core/aosp/priv_app_Provision.tar.xz
+        zip/sys/aosp/sys_app_Messaging.tar.xz
+        zip/sys_Permissions_AOSP.tar.xz";
+
+      # Re-define unzip function for AOSP apps
+      # with similar target
+      unpack_zip;
+    fi;
 
     # Unpack system files
     extract_app() {
@@ -2303,6 +2592,10 @@ sdk_v27_install() {
       tar -xf $ZIP_FILE/sys/sys_app_GoogleCalendarSyncAdapter.tar.xz -C $TMP_SYS;
       tar -xf $ZIP_FILE/sys/sys_app_GoogleContactsSyncAdapter.tar.xz -C $TMP_SYS;
       tar -xf $ZIP_FILE/sys/sys_app_GoogleExtShared.tar.xz -C $TMP_SYS;
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        tar tvf $ZIP_FILE/sys/aosp/sys_app_Messaging.tar.xz >> $LOG;
+        tar -xf $ZIP_FILE/sys/aosp/sys_app_Messaging.tar.xz -C $TMP_SYS_AOSP;
+      fi;
       echo "- Done" >> $LOG;
       echo "-----------------------------------" >> $LOG;
       echo "- Unpack PRIV-APP Files" >> $LOG;
@@ -2316,6 +2609,16 @@ sdk_v27_install() {
       tar -xf $ZIP_FILE/core/priv_app_GoogleServicesFramework.tar.xz -C $TMP_PRIV;
       tar -xf $ZIP_FILE/core/priv_app_Phonesky.tar.xz -C $TMP_PRIV;
       tar -xf $ZIP_FILE/core/priv_app_PrebuiltGmsCorePix.tar.xz -C $TMP_PRIV;
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        tar tvf $ZIP_FILE/core/aosp/priv_app_Contacts.tar.xz >> $LOG;
+        tar tvf $ZIP_FILE/core/aosp/priv_app_Dialer.tar.xz >> $LOG;
+        tar tvf $ZIP_FILE/core/aosp/priv_app_ManagedProvisioning.tar.xz >> $LOG;
+        tar tvf $ZIP_FILE/core/aosp/priv_app_Provision.tar.xz >> $LOG;
+        tar -xf $ZIP_FILE/core/aosp/priv_app_Contacts.tar.xz -C $TMP_PRIV_AOSP;
+        tar -xf $ZIP_FILE/core/aosp/priv_app_Dialer.tar.xz -C $TMP_PRIV_AOSP;
+        tar -xf $ZIP_FILE/core/aosp/priv_app_ManagedProvisioning.tar.xz -C $TMP_PRIV_AOSP;
+        tar -xf $ZIP_FILE/core/aosp/priv_app_Provision.tar.xz -C $TMP_PRIV_AOSP;
+      fi;
       echo "- Done" >> $LOG;
       echo "-----------------------------------" >> $LOG;
       echo "- Unpack Framework Files" >> $LOG;
@@ -2342,6 +2645,10 @@ sdk_v27_install() {
       tar -xf $ZIP_FILE/sys_Default_Permission.tar.xz -C $TMP_DEFAULT_PERM;
       tar -xf $ZIP_FILE/sys_Permissions.tar.xz -C $TMP_G_PERM;
       tar -xf $ZIP_FILE/sys_Pref_Permission.tar.xz -C $TMP_G_PREF;
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        tar tvf $ZIP_FILE/sys_Permissions_AOSP.tar.xz >> $LOG;
+        tar -xf $ZIP_FILE/sys_Permissions_AOSP.tar.xz -C $TMP_G_PERM_AOSP;
+      fi;
       echo "- Done" >> $LOG;
       echo "-----------------------------------" >> $LOG;
       echo "- Installation Complete" >> $LOG;
@@ -2360,6 +2667,10 @@ sdk_v27_install() {
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleCalendarSyncAdapter/GoogleCalendarSyncAdapter.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleContactsSyncAdapter/GoogleContactsSyncAdapter.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleExtShared/GoogleExtShared.apk";
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/Messaging";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/Messaging/Messaging.apk";
+      fi;
     }
 
     selinux_context_sp2() {
@@ -2373,6 +2684,16 @@ sdk_v27_install() {
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Phonesky/Phonesky.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/PrebuiltGmsCorePix/PrebuiltGmsCorePix.apk";
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Contacts";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Dialer";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/ManagedProvisioning";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Provision";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Contacts/Contacts.apk";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Dialer/Dialer.apk";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/ManagedProvisioning/ManagedProvisioning.apk";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Provision/Provision.apk";
+      fi;
     }
 
     selinux_context_sf3() {
@@ -2408,6 +2729,12 @@ sdk_v27_install() {
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_CONFIG/google_build.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_CONFIG/google_exclusives_enable.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM/etc/g.prop";
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PERM/com.android.contacts.xml";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PERM/com.android.dialer.xml";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PERM/com.android.managedprovisioning.xml";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PERM/com.android.provision.xml";
+      fi;
     }
     # end selinux method
 
@@ -2428,6 +2755,13 @@ sdk_v27_install() {
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk $ZIPALIGN_OUTFILE/GoogleServicesFramework.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk $ZIPALIGN_OUTFILE/Phonesky.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/PrebuiltGmsCorePix/PrebuiltGmsCorePix.apk $ZIPALIGN_OUTFILE/PrebuiltGmsCorePix.apk >> $ZIPALIGN_LOG;
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        $ZIPALIGN_TOOL -p -v 4 $SYSTEM_APP/Messaging/Messaging.apk $ZIPALIGN_OUTFILE/Messaging.apk >> $ZIPALIGN_LOG;
+        $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/Contacts/Contacts.apk $ZIPALIGN_OUTFILE/Contacts.apk >> $ZIPALIGN_LOG;
+        $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/Dialer/Dialer.apk $ZIPALIGN_OUTFILE/Dialer.apk >> $ZIPALIGN_LOG;
+        $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/ManagedProvisioning/ManagedProvisioning.apk $ZIPALIGN_OUTFILE/ManagedProvisioning.apk >> $ZIPALIGN_LOG;
+        $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/Provision/Provision.apk $ZIPALIGN_OUTFILE/Provision.apk >> $ZIPALIGN_LOG;
+      fi;
     }
 
     pre_opt() {
@@ -2440,6 +2774,13 @@ sdk_v27_install() {
       rm -rf $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk
       rm -rf $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk
       rm -rf $SYSTEM_PRIV_APP/PrebuiltGmsCorePix/PrebuiltGmsCorePix.apk
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        rm -rf $SYSTEM_APP/Messaging/Messaging.apk
+        rm -rf $SYSTEM_PRIV_APP/Contacts/Contacts.apk
+        rm -rf $SYSTEM_PRIV_APP/Dialer/Dialer.apk
+        rm -rf $SYSTEM_PRIV_APP/ManagedProvisioning/ManagedProvisioning.apk
+        rm -rf $SYSTEM_PRIV_APP/Provision/Provision.apk
+      fi;
     }
 
     add_opt() {
@@ -2452,6 +2793,13 @@ sdk_v27_install() {
       cp -f $ZIPALIGN_OUTFILE/GoogleServicesFramework.apk $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk
       cp -f $ZIPALIGN_OUTFILE/Phonesky.apk $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk
       cp -f $ZIPALIGN_OUTFILE/PrebuiltGmsCorePix.apk $SYSTEM_PRIV_APP/PrebuiltGmsCorePix/PrebuiltGmsCorePix.apk
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        cp -f $ZIPALIGN_OUTFILE/Messaging.apk $SYSTEM_APP/Messaging/Messaging.apk
+        cp -f $ZIPALIGN_OUTFILE/Contacts.apk $SYSTEM_PRIV_APP/Contacts/Contacts.apk
+        cp -f $ZIPALIGN_OUTFILE/Dialer.apk $SYSTEM_PRIV_APP/Dialer/Dialer.apk
+        cp -f $ZIPALIGN_OUTFILE/ManagedProvisioning.apk $SYSTEM_PRIV_APP/ManagedProvisioning/ManagedProvisioning.apk
+        cp -f $ZIPALIGN_OUTFILE/Provision.apk $SYSTEM_PRIV_APP/Provision/Provision.apk
+      fi;
     }
 
     perm_opt() {
@@ -2464,6 +2812,13 @@ sdk_v27_install() {
       chmod 0644 $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk
       chmod 0644 $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk
       chmod 0644 $SYSTEM_PRIV_APP/PrebuiltGmsCorePix/PrebuiltGmsCorePix.apk
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        chmod 0644 $SYSTEM_APP/Messaging/Messaging.apk
+        chmod 0644 $SYSTEM_PRIV_APP/Contacts/Contacts.apk
+        chmod 0644 $SYSTEM_PRIV_APP/Dialer/Dialer.apk
+        chmod 0644 $SYSTEM_PRIV_APP/ManagedProvisioning/ManagedProvisioning.apk
+        chmod 0644 $SYSTEM_PRIV_APP/Provision/Provision.apk
+      fi;
     }
     # end opt method
 
@@ -2516,10 +2871,24 @@ sdk_v25_install() {
       zip/sys_Lib.tar.xz
       zip/sys_Lib64.tar.xz
       zip/sys_Permissions.tar.xz
-      zip/sys_Pref_Permission.tar.xz"
+      zip/sys_Pref_Permission.tar.xz";
 
     # Unzip system files from installer
     unpack_zip;
+
+    if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+      ZIP="
+        zip/core/aosp/priv_app_Contacts.tar.xz
+        zip/core/aosp/priv_app_Dialer.tar.xz
+        zip/core/aosp/priv_app_ManagedProvisioning.tar.xz
+        zip/core/aosp/priv_app_Provision.tar.xz
+        zip/sys/aosp/sys_app_Messaging.tar.xz
+        zip/sys_Permissions_AOSP.tar.xz";
+
+      # Re-define unzip function for AOSP apps
+      # with similar target
+      unpack_zip;
+    fi;
 
     # Unpack system files
     extract_app() {
@@ -2533,6 +2902,10 @@ sdk_v25_install() {
       tar -xf $ZIP_FILE/sys/sys_app_GoogleCalendarSyncAdapter.tar.xz -C $TMP_SYS;
       tar -xf $ZIP_FILE/sys/sys_app_GoogleContactsSyncAdapter.tar.xz -C $TMP_SYS;
       tar -xf $ZIP_FILE/sys/sys_app_GoogleExtShared.tar.xz -C $TMP_SYS;
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        tar tvf $ZIP_FILE/sys/aosp/sys_app_Messaging.tar.xz >> $LOG;
+        tar -xf $ZIP_FILE/sys/aosp/sys_app_Messaging.tar.xz -C $TMP_SYS_AOSP;
+      fi;
       echo "- Done" >> $LOG;
       echo "-----------------------------------" >> $LOG;
       echo "- Unpack PRIV-APP Files" >> $LOG;
@@ -2548,6 +2921,16 @@ sdk_v25_install() {
       tar -xf $ZIP_FILE/core/priv_app_GoogleServicesFramework.tar.xz -C $TMP_PRIV;
       tar -xf $ZIP_FILE/core/priv_app_Phonesky.tar.xz -C $TMP_PRIV;
       tar -xf $ZIP_FILE/core/priv_app_PrebuiltGmsCore.tar.xz -C $TMP_PRIV;
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        tar tvf $ZIP_FILE/core/aosp/priv_app_Contacts.tar.xz >> $LOG;
+        tar tvf $ZIP_FILE/core/aosp/priv_app_Dialer.tar.xz >> $LOG;
+        tar tvf $ZIP_FILE/core/aosp/priv_app_ManagedProvisioning.tar.xz >> $LOG;
+        tar tvf $ZIP_FILE/core/aosp/priv_app_Provision.tar.xz >> $LOG;
+        tar -xf $ZIP_FILE/core/aosp/priv_app_Contacts.tar.xz -C $TMP_PRIV_AOSP;
+        tar -xf $ZIP_FILE/core/aosp/priv_app_Dialer.tar.xz -C $TMP_PRIV_AOSP;
+        tar -xf $ZIP_FILE/core/aosp/priv_app_ManagedProvisioning.tar.xz -C $TMP_PRIV_AOSP;
+        tar -xf $ZIP_FILE/core/aosp/priv_app_Provision.tar.xz -C $TMP_PRIV_AOSP;
+      fi;
       echo "- Done" >> $LOG;
       echo "-----------------------------------" >> $LOG;
       echo "- Unpack Framework Files" >> $LOG;
@@ -2574,6 +2957,10 @@ sdk_v25_install() {
       tar -xf $ZIP_FILE/sys_Default_Permission.tar.xz -C $TMP_DEFAULT_PERM;
       tar -xf $ZIP_FILE/sys_Permissions.tar.xz -C $TMP_G_PERM;
       tar -xf $ZIP_FILE/sys_Pref_Permission.tar.xz -C $TMP_G_PREF;
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        tar tvf $ZIP_FILE/sys_Permissions_AOSP.tar.xz >> $LOG;
+        tar -xf $ZIP_FILE/sys_Permissions_AOSP.tar.xz -C $TMP_G_PERM_AOSP;
+      fi;
       echo "- Done" >> $LOG;
       echo "-----------------------------------" >> $LOG;
       echo "- Installation Complete" >> $LOG;
@@ -2592,6 +2979,10 @@ sdk_v25_install() {
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleCalendarSyncAdapter/GoogleCalendarSyncAdapter.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleContactsSyncAdapter/GoogleContactsSyncAdapter.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleExtShared/GoogleExtShared.apk";
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/Messaging";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/Messaging/Messaging.apk";
+      fi;
     }
 
     selinux_context_sp2() {
@@ -2607,6 +2998,16 @@ sdk_v25_install() {
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Phonesky/Phonesky.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/PrebuiltGmsCore/PrebuiltGmsCore.apk";
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Contacts";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Dialer";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/ManagedProvisioning";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Provision";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Contacts/Contacts.apk";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Dialer/Dialer.apk";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/ManagedProvisioning/ManagedProvisioning.apk";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Provision/Provision.apk";
+      fi;
     }
 
     selinux_context_sf3() {
@@ -2641,6 +3042,12 @@ sdk_v25_install() {
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_CONFIG/google_build.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_CONFIG/google_exclusives_enable.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM/etc/g.prop";
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PERM/com.android.contacts.xml";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PERM/com.android.dialer.xml";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PERM/com.android.managedprovisioning.xml";
+        chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_PERM/com.android.provision.xml";
+      fi;
     }
     # end selinux method
 
@@ -2662,6 +3069,13 @@ sdk_v25_install() {
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk $ZIPALIGN_OUTFILE/GoogleServicesFramework.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk $ZIPALIGN_OUTFILE/Phonesky.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/PrebuiltGmsCore/PrebuiltGmsCore.apk $ZIPALIGN_OUTFILE/PrebuiltGmsCore.apk >> $ZIPALIGN_LOG;
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        $ZIPALIGN_TOOL -p -v 4 $SYSTEM_APP/Messaging/Messaging.apk $ZIPALIGN_OUTFILE/Messaging.apk >> $ZIPALIGN_LOG;
+        $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/Contacts/Contacts.apk $ZIPALIGN_OUTFILE/Contacts.apk >> $ZIPALIGN_LOG;
+        $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/Dialer/Dialer.apk $ZIPALIGN_OUTFILE/Dialer.apk >> $ZIPALIGN_LOG;
+        $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/ManagedProvisioning/ManagedProvisioning.apk $ZIPALIGN_OUTFILE/ManagedProvisioning.apk >> $ZIPALIGN_LOG;
+        $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/Provision/Provision.apk $ZIPALIGN_OUTFILE/Provision.apk >> $ZIPALIGN_LOG;
+      fi;
     }
 
     pre_opt() {
@@ -2675,6 +3089,13 @@ sdk_v25_install() {
       rm -rf $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk
       rm -rf $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk
       rm -rf $SYSTEM_PRIV_APP/PrebuiltGmsCore/PrebuiltGmsCore.apk
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        rm -rf $SYSTEM_APP/Messaging/Messaging.apk
+        rm -rf $SYSTEM_PRIV_APP/Contacts/Contacts.apk
+        rm -rf $SYSTEM_PRIV_APP/Dialer/Dialer.apk
+        rm -rf $SYSTEM_PRIV_APP/ManagedProvisioning/ManagedProvisioning.apk
+        rm -rf $SYSTEM_PRIV_APP/Provision/Provision.apk
+      fi;
     }
 
     add_opt() {
@@ -2688,6 +3109,13 @@ sdk_v25_install() {
       cp -f $ZIPALIGN_OUTFILE/GoogleServicesFramework.apk $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk
       cp -f $ZIPALIGN_OUTFILE/Phonesky.apk $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk
       cp -f $ZIPALIGN_OUTFILE/PrebuiltGmsCore.apk $SYSTEM_PRIV_APP/PrebuiltGmsCore/PrebuiltGmsCore.apk
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        cp -f $ZIPALIGN_OUTFILE/Messaging.apk $SYSTEM_APP/Messaging/Messaging.apk
+        cp -f $ZIPALIGN_OUTFILE/Contacts.apk $SYSTEM_PRIV_APP/Contacts/Contacts.apk
+        cp -f $ZIPALIGN_OUTFILE/Dialer.apk $SYSTEM_PRIV_APP/Dialer/Dialer.apk
+        cp -f $ZIPALIGN_OUTFILE/ManagedProvisioning.apk $SYSTEM_PRIV_APP/ManagedProvisioning/ManagedProvisioning.apk
+        cp -f $ZIPALIGN_OUTFILE/Provision.apk $SYSTEM_PRIV_APP/Provision/Provision.apk
+      fi;
     }
 
     perm_opt() {
@@ -2701,6 +3129,13 @@ sdk_v25_install() {
       chmod 0644 $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk
       chmod 0644 $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk
       chmod 0644 $SYSTEM_PRIV_APP/PrebuiltGmsCore/PrebuiltGmsCore.apk
+      if [ "$AOSP_PKG_INSTALL" == "true" ]; then
+        chmod 0644 $SYSTEM_APP/Messaging/Messaging.apk
+        chmod 0644 $SYSTEM_PRIV_APP/Contacts/Contacts.apk
+        chmod 0644 $SYSTEM_PRIV_APP/Dialer/Dialer.apk
+        chmod 0644 $SYSTEM_PRIV_APP/ManagedProvisioning/ManagedProvisioning.apk
+        chmod 0644 $SYSTEM_PRIV_APP/Provision/Provision.apk
+      fi;
     }
     # end opt method
 
@@ -2742,7 +3177,7 @@ runtime_permission() {
 
 # OTA survival script
 backup_script() {
-  ZIP="zip/sys_addon.tar.xz"
+  ZIP="zip/sys_addon.tar.xz";
   unpack_zip;
   extract_backup_script() {
     tar tvf $ZIP_FILE/sys_addon.tar.xz >> $restore;
@@ -2757,7 +3192,7 @@ backup_script() {
 ZIP_INITIAL="
   zip/core/priv_app_GoogleBackupTransport.tar.xz
   zip/core/priv_app_GoogleRestore.tar.xz
-  zip/core/priv_app_SetupWizard.tar.xz"
+  zip/core/priv_app_SetupWizard.tar.xz";
 
 # Unpack system files using config property
 unpack_zip_initial() {
@@ -2769,9 +3204,9 @@ unpack_zip_initial() {
 # Check whether SetupWizard config file present in device or not
 get_setup_config() {
   if [ -f $INTERNAL/setup-config.prop ]; then
-    setup_config=true
+    setup_config="true";
   else
-    setup_config=false
+    setup_config="false";
   fi;
 }
 
@@ -2884,11 +3319,23 @@ config_install() {
   fi;
 }
 
-# Set addon package installation
-addon_core_install() {
-  ADDON_CORE=""
-  PKG_CORE=""
-  ZIP="zip/core/$ADDON_CORE"
+# Set addon install target
+target_sys() {
+  ZIP="zip/sys/$ADDON_SYS";
+  # Unzip system files from installer
+  unpack_zip;
+  # Unpack system files
+  tar tvf $ZIP_FILE/sys/$ADDON_SYS >> $LOG;
+  tar -xf $ZIP_FILE/sys/$ADDON_SYS -C $TMP_SYS;
+  # Install package
+  set_sparse;
+  # Set selinux context
+  chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/$PKG_SYS";
+  chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/$PKG_SYS/$PKG_SYS.apk";
+}
+
+target_core() {
+  ZIP="zip/core/$ADDON_CORE";
   # Unzip system files from installer
   unpack_zip;
   # Unpack system files
@@ -2900,21 +3347,67 @@ addon_core_install() {
   chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/$PKG_CORE";
   chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/$PKG_CORE/$PKG_CORE.apk";
 }
-
-addon_sys_install() {
-  ADDON_SYS=""
-  PKG_SYS=""
-  ZIP="zip/sys/$ADDON_SYS"
-  # Unzip system files from installer
-  unpack_zip;
-  # Unpack system files
-  tar tvf $ZIP_FILE/sys/$ADDON_SYS >> $LOG;
-  tar -xf $ZIP_FILE/sys/$ADDON_SYS -C $TMP_SYS;
-  # Install package
-  set_sparse;
-  # Set selinux context
-  chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/$PKG_SYS";
-  chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/$PKG_SYS/$PKG_SYS.apk";
+  
+# Set addon package installation
+set_addon_install() {
+  if [ "$TARGET_CALCULATOR_GOOGLE" == "true" ]; then
+    ADDON_SYS="sys_app_CalculatorGooglePrebuilt.tar.xz";
+    PKG_SYS="CalculatorGooglePrebuilt";
+    target_sys;
+  fi;
+  if [ "$TARGET_CALENDAR_GOOGLE" == "true" ]; then
+    ADDON_SYS="sys_app_CalendarGooglePrebuilt.tar.xz";
+    PKG_SYS="CalendarGooglePrebuilt";
+    target_sys;
+  fi;
+  if [ "$TARGET_CONTACTS_GOOGLE" == "true" ]; then
+    ADDON_SYS="sys_app_ContactsGooglePrebuilt.tar.xz";
+    PKG_SYS="ContactsGooglePrebuilt";
+    target_sys;
+  fi;
+  if [ "$TARGET_DESKCLOCK_GOOGLE" == "true" ]; then
+    ADDON_SYS="sys_app_DeskClockGooglePrebuilt.tar.xz";
+    PKG_SYS="DeskClockGooglePrebuilt";
+    target_sys;
+  fi;
+  if [ "$TARGET_DIALER_GOOGLE" == "true" ]; then
+    ADDON_SYS="sys_app_DialerGooglePrebuilt.tar.xz";
+    PKG_SYS="DialerGooglePrebuilt";
+    target_sys;
+  fi;
+  if [ "$TARGET_MESSAGES_GOOGLE" == "true" ]; then
+    if [ "$device_architecture" == "$ANDROID_PLATFORM_ARM32" ]; then
+      ADDON_SYS="sys_app_MessagesGooglePrebuilt_arm.tar.xz";
+      PKG_SYS="MessagesGooglePrebuilt";
+      target_sys;
+      ADDON_CORE="priv_app_CarrierServices_arm.tar.xz";
+      PKG_CORE="CarrierServices";
+      target_core;
+    fi;
+    if [ "$device_architecture" == "$ANDROID_PLATFORM_ARM64" ]; then
+      ADDON_SYS="sys_app_MessagesGooglePrebuilt_arm64.tar.xz";
+      PKG_SYS="MessagesGooglePrebuilt";
+      target_sys;
+      ADDON_CORE="priv_app_CarrierServices_arm64.tar.xz";
+      PKG_CORE="CarrierServices";
+      target_core;
+    fi;
+  fi;
+  if [ "$TARGET_PHOTOS_GOOGLE" == "true" ]; then
+    ADDON_SYS="sys_app_PhotosGooglePrebuilt.tar.xz";
+    PKG_SYS="PhotosGooglePrebuilt";
+    target_sys;
+  fi;
+  if [ "$TARGET_ASSISTANT_GOOGLE" == "true" ]; then
+    ADDON_CORE="priv_app_Velvet.tar.xz";
+    PKG_CORE="Velvet";
+    target_core;
+  fi;
+  if [ "$TARGET_WELLBEING_GOOGLE" == "true" ]; then
+    ADDON_CORE="priv_app_WellbeingPrebuilt.tar.xz";
+    PKG_CORE="WellbeingPrebuilt";
+    target_core;
+  fi;
 }
 
 # Enable Google Assistant
@@ -2934,7 +3427,7 @@ opt_v28() {
 }
 
 # Delete existing GMS Doze entry from all XML files
-# This function should be execute before 'post_install()' function
+# This function should be executed before 'post_install()' function
 opt_v29() {
   if [ "$android_sdk" == "$supported_sdk_v29" ]; then
     sed -i '/allow-in-power-save package="com.google.android.gms"/d' $SYSTEM/etc/permissions/*.xml
@@ -2972,9 +3465,9 @@ purge_whitelist_permission() {
   if [ -f $SYSTEM/etc/prop.default ]; then
     if [ -n "$(cat $SYSTEM/etc/prop.default | grep control_privapp_permissions)" ]; then
       if [ -f "$ANDROID_ROOT/default.prop" ]; then
-        SYMLINK=true
+        SYMLINK="true";
       else
-        SYMLINK=false
+        SYMLINK="false";
       fi;
       grep -v "$PROPFLAG" $SYSTEM/etc/prop.default > $TMP/prop.default
       rm -rf $SYSTEM/etc/prop.default
@@ -3111,9 +3604,9 @@ whitelist_patch() {
 # Check whether CTS config file present in device or not
 get_cts_config() {
   if [ -f $INTERNAL/cts-config.prop ]; then
-    cts_config=true
+    cts_config="true";
   else
-    cts_config=false
+    cts_config="false";
   fi;
 }
 
@@ -3125,8 +3618,10 @@ cts_patch() {
   else
     if [ "$cts_config" == "true" ]; then
       if [ "$supported_cts_config" == "$supported_target" ]; then
-        cts_patch_system;
-        cts_patch_vendor;
+        if [ "$android_sdk" == "$supported_sdk_v29" ]; then
+          cts_patch_system;
+          cts_patch_vendor;
+        fi;
       else
         echo "ERROR: Config property set to 'false'" >> $CTS_PATCH;
       fi;
@@ -3139,15 +3634,15 @@ cts_patch() {
 # API fixes
 sdk_fix() {
   if [ "$android_sdk" -ge "26" ]; then # Android 8.0+ uses 0600 for its permission on build.prop
-    chmod 0600 "$SYSTEM/build.prop"
-    if [ -f $SYSTEM/etc/prop.default ]; then
-      chmod 0600 "$SYSTEM/etc/prop.default"
+    chmod 0600 $SYSTEM/build.prop
+    if [ -f "$SYSTEM/etc/prop.default" ]; then
+      chmod 0600 $SYSTEM/etc/prop.default
     fi;
     if [ -f "$SYSTEM/product/build.prop" ]; then
-      chmod 0600 "$SYSTEM/product/build.prop"
+      chmod 0600 $SYSTEM/product/build.prop
     fi;
     if [ "$device_vendorpartition" = "true" ]; then
-      chmod 0600 "$VENDOR/build.prop"
+      chmod 0600 $VENDOR/build.prop
     fi;
   fi;
 }
@@ -3272,6 +3767,7 @@ function pre_install() {
     mount_stat;
     profile;
     on_version_check;
+    on_platform_check;
   else
     selinux;
     clean_logs;
@@ -3309,7 +3805,7 @@ pre_install;
 diskfree() {
   # Get the available space left on the device
   size=`df -k $ANDROID_ROOT | tail -n 1 | tr -s ' ' | cut -d' ' -f4`
-  CAPACITY="200000"
+  CAPACITY="200000";
 
   # Disk space in human readable format (k=1024)
   ds_hr=`df -h $ANDROID_ROOT | tail -n 1 | tr -s ' ' | cut -d' ' -f4`
@@ -3345,8 +3841,7 @@ function post_install() {
     system_pathmap;
     recovery_actions;
     mk_component;
-    addon_core_install;
-    addon_sys_install;
+    set_addon_install;
     on_installed;
     recovery_cleanup;
   else
@@ -3355,8 +3850,9 @@ function post_install() {
     system_pathmap;
     recovery_actions;
     mk_component;
-    on_gsf;
-    pre_installed;
+    on_gsf_check;
+    set_aosp_default;
+    lim_aosp_install;
     pre_installed_v29;
     pre_installed_v28;
     pre_installed_v27;
