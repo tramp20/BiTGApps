@@ -7,8 +7,6 @@
 #
 # Build Date      : Monday May 04 10:30:21 IST 2020
 #
-# Updated on      : Monday July 20 07:55:10 IST 2020
-#
 # BiTGApps Author : TheHitMan @ xda-developers
 #
 # Copyright       : Copyright (C) 2020 TheHitMan7 (Kartik Verma)

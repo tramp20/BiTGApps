@@ -1,9 +1,9 @@
 ##############################################################
-# File name       : cts-config.prop
+# File name       : addon-config.prop
 #
-# Description     : Install Safetynet patch
+# Description     : Install additional GApps packages
 #
-# Build Date      : Tuesday March 03 20:05:36 IST 2020
+# Build Date      : Saturday August 29 02:25:28 IST 2020
 #
 # BiTGApps Author : TheHitMan @ xda-developers
 #
@@ -22,5 +22,15 @@
 # GNU General Public License for more details.
 ##############################################################
 
-# Property for installing safetynet patch
-ro.config.cts=true
+# Property for installing listed GApps
+ro.config.calculator=false
+ro.config.calendar=false
+ro.config.contacts=false
+ro.config.deskclock=false
+ro.config.dialer=false
+ro.config.markup=false
+ro.config.messages=false
+ro.config.photos=false
+ro.config.soundpicker=false
+ro.config.assistant=false
+ro.config.wellbeing=false
