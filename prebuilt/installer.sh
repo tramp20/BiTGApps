@@ -1890,6 +1890,8 @@ set_sparse() {
     if [ "$ZIPTYPE" == "addon" ]; then
       send_sparse_1;
       send_sparse_2;
+      send_sparse_4;
+      send_sparse_5;
     else
       send_sparse_1;
       send_sparse_2;
@@ -3439,270 +3441,561 @@ set_google_default() {
     chmod 600 "$setsec"
   fi;
 }
-  
-# Set addon package installation
-set_addon_install() {
-  if [ "$supported_calculator_config" == "$supported_target" ]; then
-    ui_print "Installing Calculator Google";
-    # Remove AOSP Calculator
-    rm -rf $SYSTEM/app/Calculator*
-    rm -rf $SYSTEM/app/calculator*
-    rm -rf $SYSTEM/priv-app/Calculator*
-    rm -rf $SYSTEM/priv-app/calculator*
-    rm -rf $SYSTEM/product/app/Calculator*
-    rm -rf $SYSTEM/product/app/calculator*
-    rm -rf $SYSTEM/product/priv-app/Calculator*
-    rm -rf $SYSTEM/product/priv-app/calculator*
-    # Set install variable
-    ADDON_SYS="sys_app_CalculatorGooglePrebuilt.tar.xz";
-    PKG_SYS="CalculatorGooglePrebuilt";
-    # Install
-    target_sys;
-  fi;
-  if [ "$supported_calendar_config" == "$supported_target" ]; then
-    ui_print "Installing Calendar Google";
-    # Backup
-    test -d $SYSTEM/app/CalendarProvider && SYS_APP_CP="true" || SYS_APP_CP="false";
-    test -d $SYSTEM/priv-app/CalendarProvider && SYS_PRIV_CP="true" || SYS_PRIV_CP="false";
-    test -d $SYSTEM/product/app/CalendarProvider && PRO_APP_CP="true" || PRO_APP_CP="false";
-    test -d $SYSTEM/product/priv-app/CalendarProvider && PRO_PRIV_CP="true" || PRO_PRIV_CP="false";
-    if [ "$SYS_APP_CP" == "true" ]; then
-      mv $SYSTEM/app/CalendarProvider $TMP/restore/CalendarProvider
-    fi;
-    if [ "$SYS_PRIV_CP" == "true" ]; then
-      mv $SYSTEM/priv-app/CalendarProvider $TMP/restore/CalendarProvider
-    fi;
-    if [ "$PRO_APP_CP" == "true" ]; then
-      mv $SYSTEM/product/app/CalendarProvider $TMP/restore/CalendarProvider
-    fi;
-    if [ "$PRO_PRIV_CP" == "true" ]; then
-      mv $SYSTEM/product/priv-app/CalendarProvider $TMP/restore/CalendarProvider
-    fi;
-    # Remove AOSP Calendar
-    rm -rf $SYSTEM/app/Calendar*
-    rm -rf $SYSTEM/app/calendar*
-    rm -rf $SYSTEM/app/Etar
-    rm -rf $SYSTEM/priv-app/Calendar*
-    rm -rf $SYSTEM/priv-app/calendar*
-    rm -rf $SYSTEM/priv-app/Etar
-    rm -rf $SYSTEM/product/app/Calendar*
-    rm -rf $SYSTEM/product/app/calendar*
-    rm -rf $SYSTEM/product/app/Etar
-    rm -rf $SYSTEM/product/priv-app/Calendar*
-    rm -rf $SYSTEM/product/priv-app/calendar*
-    rm -rf $SYSTEM/product/priv-app/Etar
-    # Set install variable
-    ADDON_SYS="sys_app_CalendarGooglePrebuilt.tar.xz";
-    PKG_SYS="CalendarGooglePrebuilt";
-    # Install
-    target_sys;
-    # Restore
-    if [ "$SYS_APP_CP" == "true" ]; then
-      mv $TMP/restore/CalendarProvider $SYSTEM/app/CalendarProvider
-    fi;
-    if [ "$SYS_PRIV_CP" == "true" ]; then
-      mv $TMP/restore/CalendarProvider $SYSTEM/priv-app/CalendarProvider
-    fi;
-    if [ "$PRO_APP_CP" == "true" ]; then
-      mv $TMP/restore/CalendarProvider $SYSTEM/product/app/CalendarProvider
-    fi;
-    if [ "$PRO_PRIV_CP" == "true" ]; then
-      mv $TMP/restore/CalendarProvider $SYSTEM/product/priv-app/CalendarProvider
-    fi;
-  fi;
-  if [ "$supported_contacts_config" == "$supported_target" ]; then
-    ui_print "Installing Contacts Google";
-    # Backup
-    test -d $SYSTEM/app/ContactsProvider && SYS_APP_CTT="true" || SYS_APP_CTT="false";
-    test -d $SYSTEM/priv-app/ContactsProvider && SYS_PRIV_CTT="true" || SYS_PRIV_CTT="false";
-    test -d $SYSTEM/product/app/ContactsProvider && PRO_APP_CTT="true" || PRO_APP_CTT="false";
-    test -d $SYSTEM/product/priv-app/ContactsProvider && PRO_PRIV_CTT="true" || PRO_PRIV_CTT="false";
-    if [ "$SYS_APP_CTT" == "true" ]; then
-      mv $SYSTEM/app/ContactsProvider $TMP/restore/ContactsProvider
-    fi;
-    if [ "$SYS_PRIV_CTT" == "true" ]; then
-      mv $SYSTEM/priv-app/ContactsProvider $TMP/restore/ContactsProvider
-    fi;
-    if [ "$PRO_APP_CTT" == "true" ]; then
-      mv $SYSTEM/product/app/ContactsProvider $TMP/restore/ContactsProvider
-    fi;
-    if [ "$PRO_PRIV_CTT" == "true" ]; then
-      mv $SYSTEM/product/priv-app/ContactsProvider $TMP/restore/ContactsProvider
-    fi;
-    # Remove AOSP Contacts
-    rm -rf $SYSTEM/app/Contacts*
-    rm -rf $SYSTEM/app/contacts*
-    rm -rf $SYSTEM/priv-app/Contacts*
-    rm -rf $SYSTEM/priv-app/contacts*
-    rm -rf $SYSTEM/product/app/Contacts*
-    rm -rf $SYSTEM/product/app/contacts*
-    rm -rf $SYSTEM/product/priv-app/Contacts*
-    rm -rf $SYSTEM/product/priv-app/contacts*
-    # Set install variable
-    ADDON_CORE="priv_app_ContactsGooglePrebuilt.tar.xz";
-    PKG_CORE="ContactsGooglePrebuilt";
-    # Install
-    target_core;
-    # Restore
-    if [ "$SYS_APP_CTT" == "true" ]; then
-      mv $TMP/restore/ContactsProvider $SYSTEM/app/ContactsProvider
-    fi;
-    if [ "$SYS_PRIV_CTT" == "true" ]; then
-      mv $TMP/restore/ContactsProvider $SYSTEM/priv-app/ContactsProvider
-    fi;
-    if [ "$PRO_APP_CTT" == "true" ]; then
-      mv $TMP/restore/ContactsProvider $SYSTEM/product/app/ContactsProvider
-    fi;
-    if [ "$PRO_PRIV_CTT" == "true" ]; then
-      mv $TMP/restore/ContactsProvider $SYSTEM/product/priv-app/ContactsProvider
-    fi;
-  fi;
-  if [ "$supported_deskclock_config" == "$supported_target" ]; then
-    ui_print "Installing Deskclock Google";
-    # Remove AOSP DeskClock
-    rm -rf $SYSTEM/app/DeskClock*
-    rm -rf $SYSTEM/app/Clock*
-    rm -rf $SYSTEM/priv-app/DeskClock*
-    rm -rf $SYSTEM/priv-app/Clock*
-    rm -rf $SYSTEM/product/app/DeskClock*
-    rm -rf $SYSTEM/product/app/Clock*
-    rm -rf $SYSTEM/product/priv-app/DeskClock*
-    rm -rf $SYSTEM/product/priv-app/Clock*
-    # Set install variable
-    ADDON_SYS="sys_app_DeskClockGooglePrebuilt.tar.xz";
-    PKG_SYS="DeskClockGooglePrebuilt";
-    # Install
-    target_sys;
-  fi;
-  if [ "$supported_dialer_config" == "$supported_target" ]; then
-    ui_print "Installing Dialer Google";
-    # Remove AOSP Dialer
-    rm -rf $SYSTEM/app/Dialer*
-    rm -rf $SYSTEM/app/dialer*
-    rm -rf $SYSTEM/priv-app/Dialer*
-    rm -rf $SYSTEM/priv-app/dialer*
-    rm -rf $SYSTEM/product/app/Dialer*
-    rm -rf $SYSTEM/product/app/dialer*
-    rm -rf $SYSTEM/product/priv-app/Dialer*
-    rm -rf $SYSTEM/product/priv-app/dialer*
-    # Set install variable
-    ADDON_CORE="priv_app_DialerGooglePrebuilt.tar.xz";
-    PKG_CORE="DialerGooglePrebuilt";
-    # Install
-    target_core;
-    # Set Google Dialer as default
-    set_google_default;
-  fi;
-  if [ "$supported_markup_config" == "$supported_target" ]; then
-    ui_print "Installing Markup Google";
-    # Remove pre-install Markup
-    rm -rf $SYSTEM/app/MarkupGoogle*
-    rm -rf $SYSTEM/priv-app/MarkupGoogle*
-    rm -rf $SYSTEM/product/app/MarkupGoogle*
-    rm -rf $SYSTEM/product/priv-app/MarkupGoogle*
-    # Set install variable
-    ADDON_SYS="sys_app_MarkupGooglePrebuilt.tar.xz";
-    PKG_SYS="MarkupGooglePrebuilt";
-    # Install
-    target_sys;
-    target_lib32;
-    target_lib64;
-  fi;
-  if [ "$supported_messages_config" == "$supported_target" ]; then
-    ui_print "Installing Messages Google";
-    # Remove AOSP Messages
-    rm -rf $SYSTEM/app/Messages*
-    rm -rf $SYSTEM/app/messages*
-    rm -rf $SYSTEM/app/Messaging*
-    rm -rf $SYSTEM/app/messaging*
-    rm -rf $SYSTEM/priv-app/Messages*
-    rm -rf $SYSTEM/priv-app/messages*
-    rm -rf $SYSTEM/priv-app/Messaging*
-    rm -rf $SYSTEM/priv-app/messaging*
-    rm -rf $SYSTEM/product/app/Messages*
-    rm -rf $SYSTEM/product/app/messages*
-    rm -rf $SYSTEM/product/app/Messaging*
-    rm -rf $SYSTEM/product/app/messaging*
-    rm -rf $SYSTEM/product/priv-app/Messages*
-    rm -rf $SYSTEM/product/priv-app/messages*
-    rm -rf $SYSTEM/product/priv-app/Messaging*
-    rm -rf $SYSTEM/product/priv-app/messaging*
-    # Set install variable
-    ADDON_SYS="sys_app_MessagesGooglePrebuilt.tar.xz";
-    PKG_SYS="MessagesGooglePrebuilt";
-    ADDON_CORE="priv_app_CarrierServices.tar.xz";
-    PKG_CORE="CarrierServices";
-    # Install
-    target_sys;
-    target_core;
-  fi;
-  if [ "$supported_photos_config" == "$supported_target" ]; then
-    ui_print "Installing Photos Google";
-    # Remove pre-install Photos
-    rm -rf $SYSTEM/app/Photos*
-    rm -rf $SYSTEM/app/photos*
-    rm -rf $SYSTEM/priv-app/Photos*
-    rm -rf $SYSTEM/priv-app/photos*
-    rm -rf $SYSTEM/product/app/Photos*
-    rm -rf $SYSTEM/product/app/photos*
-    rm -rf $SYSTEM/product/priv-app/Photos*
-    rm -rf $SYSTEM/product/priv-app/photos*
-    # Set install variable
-    ADDON_SYS="sys_app_PhotosGooglePrebuilt.tar.xz";
-    PKG_SYS="PhotosGooglePrebuilt";
-    # Install
-    target_sys;
-  fi;
-  if [ "$supported_soundpicker_config" == "$supported_target" ]; then
-    ui_print "Installing SoundPicker Google";
-    # Remove pre-install SoundPicker
-    rm -rf $SYSTEM/app/SoundPicker*
-    rm -rf $SYSTEM/priv-app/SoundPicker*
-    rm -rf $SYSTEM/product/app/SoundPicker*
-    rm -rf $SYSTEM/product/priv-app/SoundPicker*
-    # Set install variable
-    ADDON_SYS="sys_app_SoundPickerPrebuilt.tar.xz";
-    PKG_SYS="SoundPickerPrebuilt";
-    # Install
-    target_sys;
-  fi;
-  if [ "$supported_assistant_config" == "$supported_target" ]; then
-    ui_print "Installing Assistant Google";
-    # Remove pre-install Assistant
-    rm -rf $SYSTEM/app/Velvet*
-    rm -rf $SYSTEM/app/velvet*
-    rm -rf $SYSTEM/priv-app/Velvet*
-    rm -rf $SYSTEM/priv-app/velvet*
-    rm -rf $SYSTEM/product/app/Velvet*
-    rm -rf $SYSTEM/product/app/velvet*
-    rm -rf $SYSTEM/product/priv-app/Velvet*
-    rm -rf $SYSTEM/product/priv-app/velvet*
-    # Set install variable
-    ADDON_CORE="priv_app_Velvet.tar.xz";
-    PKG_CORE="Velvet";
-    # Install
-    target_core;
-  fi;
-  if [ "$supported_wellbeing_config" == "$supported_target" ]; then
-    # Only Android SDK 29 and 28, support Google's Wellbeing
-    if [ "$android_sdk" == "$supported_sdk_v29" ] || [ "$android_sdk" == "$supported_sdk_v28" ]; then
-      ui_print "Installing Wellbeing Google";
-      # Remove pre-install Wellbeing
-      rm -rf $SYSTEM/app/Wellbeing*
-      rm -rf $SYSTEM/app/wellbeing*
-      rm -rf $SYSTEM/priv-app/Wellbeing*
-      rm -rf $SYSTEM/priv-app/wellbeing*
-      rm -rf $SYSTEM/product/app/Wellbeing*
-      rm -rf $SYSTEM/product/app/wellbeing*
-      rm -rf $SYSTEM/product/priv-app/Wellbeing*
-      rm -rf $SYSTEM/product/priv-app/wellbeing*
+
+set_addon_zip() {
+  # Config based and combined packages
+  if [ "$ADDON" == "conf" ]; then
+    if [ "$supported_calculator_config" == "$supported_target" ]; then
+      ui_print "Installing Calculator Google";
+      # Remove AOSP Calculator
+      rm -rf $SYSTEM/app/Calculator*
+      rm -rf $SYSTEM/app/calculator*
+      rm -rf $SYSTEM/app/ExactCalculator
+      rm -rf $SYSTEM/app/Exactcalculator
+      rm -rf $SYSTEM/priv-app/Calculator*
+      rm -rf $SYSTEM/priv-app/calculator*
+      rm -rf $SYSTEM/priv-app/ExactCalculator
+      rm -rf $SYSTEM/priv-app/Exactcalculator
+      rm -rf $SYSTEM/product/app/Calculator*
+      rm -rf $SYSTEM/product/app/calculator*
+      rm -rf $SYSTEM/product/priv-app/Calculator*
+      rm -rf $SYSTEM/product/priv-app/calculator*
+      rm -rf $SYSTEM/product/priv-app/ExactCalculator
+      rm -rf $SYSTEM/product/priv-app/Exactcalculator
       # Set install variable
-      ADDON_CORE="priv_app_WellbeingPrebuilt.tar.xz";
-      PKG_CORE="WellbeingPrebuilt";
+      ADDON_SYS="sys_app_CalculatorGooglePrebuilt.tar.xz";
+      PKG_SYS="CalculatorGooglePrebuilt";
+      # Install
+      target_sys;
+    fi;
+    if [ "$supported_calendar_config" == "$supported_target" ]; then
+      ui_print "Installing Calendar Google";
+      # Backup
+      test -d $SYSTEM/app/CalendarProvider && SYS_APP_CP="true" || SYS_APP_CP="false";
+      test -d $SYSTEM/priv-app/CalendarProvider && SYS_PRIV_CP="true" || SYS_PRIV_CP="false";
+      test -d $SYSTEM/product/app/CalendarProvider && PRO_APP_CP="true" || PRO_APP_CP="false";
+      test -d $SYSTEM/product/priv-app/CalendarProvider && PRO_PRIV_CP="true" || PRO_PRIV_CP="false";
+      if [ "$SYS_APP_CP" == "true" ]; then
+        mv $SYSTEM/app/CalendarProvider $TMP/restore/CalendarProvider
+      fi;
+      if [ "$SYS_PRIV_CP" == "true" ]; then
+        mv $SYSTEM/priv-app/CalendarProvider $TMP/restore/CalendarProvider
+      fi;
+      if [ "$PRO_APP_CP" == "true" ]; then
+        mv $SYSTEM/product/app/CalendarProvider $TMP/restore/CalendarProvider
+      fi;
+      if [ "$PRO_PRIV_CP" == "true" ]; then
+        mv $SYSTEM/product/priv-app/CalendarProvider $TMP/restore/CalendarProvider
+      fi;
+      # Remove AOSP Calendar
+      rm -rf $SYSTEM/app/Calendar*
+      rm -rf $SYSTEM/app/calendar*
+      rm -rf $SYSTEM/app/Etar
+      rm -rf $SYSTEM/priv-app/Calendar*
+      rm -rf $SYSTEM/priv-app/calendar*
+      rm -rf $SYSTEM/priv-app/Etar
+      rm -rf $SYSTEM/product/app/Calendar*
+      rm -rf $SYSTEM/product/app/calendar*
+      rm -rf $SYSTEM/product/app/Etar
+      rm -rf $SYSTEM/product/priv-app/Calendar*
+      rm -rf $SYSTEM/product/priv-app/calendar*
+      rm -rf $SYSTEM/product/priv-app/Etar
+      # Set install variable
+      ADDON_SYS="sys_app_CalendarGooglePrebuilt.tar.xz";
+      PKG_SYS="CalendarGooglePrebuilt";
+      # Install
+      target_sys;
+      # Restore
+      if [ "$SYS_APP_CP" == "true" ]; then
+        mv $TMP/restore/CalendarProvider $SYSTEM/app/CalendarProvider
+      fi;
+      if [ "$SYS_PRIV_CP" == "true" ]; then
+        mv $TMP/restore/CalendarProvider $SYSTEM/priv-app/CalendarProvider
+      fi;
+      if [ "$PRO_APP_CP" == "true" ]; then
+        mv $TMP/restore/CalendarProvider $SYSTEM/product/app/CalendarProvider
+      fi;
+      if [ "$PRO_PRIV_CP" == "true" ]; then
+        mv $TMP/restore/CalendarProvider $SYSTEM/product/priv-app/CalendarProvider
+      fi;
+    fi;
+    if [ "$supported_contacts_config" == "$supported_target" ]; then
+      ui_print "Installing Contacts Google";
+      # Backup
+      test -d $SYSTEM/app/ContactsProvider && SYS_APP_CTT="true" || SYS_APP_CTT="false";
+      test -d $SYSTEM/priv-app/ContactsProvider && SYS_PRIV_CTT="true" || SYS_PRIV_CTT="false";
+      test -d $SYSTEM/product/app/ContactsProvider && PRO_APP_CTT="true" || PRO_APP_CTT="false";
+      test -d $SYSTEM/product/priv-app/ContactsProvider && PRO_PRIV_CTT="true" || PRO_PRIV_CTT="false";
+      if [ "$SYS_APP_CTT" == "true" ]; then
+        mv $SYSTEM/app/ContactsProvider $TMP/restore/ContactsProvider
+      fi;
+      if [ "$SYS_PRIV_CTT" == "true" ]; then
+        mv $SYSTEM/priv-app/ContactsProvider $TMP/restore/ContactsProvider
+      fi;
+      if [ "$PRO_APP_CTT" == "true" ]; then
+        mv $SYSTEM/product/app/ContactsProvider $TMP/restore/ContactsProvider
+      fi;
+      if [ "$PRO_PRIV_CTT" == "true" ]; then
+        mv $SYSTEM/product/priv-app/ContactsProvider $TMP/restore/ContactsProvider
+      fi;
+      # Remove AOSP Contacts
+      rm -rf $SYSTEM/app/Contacts*
+      rm -rf $SYSTEM/app/contacts*
+      rm -rf $SYSTEM/priv-app/Contacts*
+      rm -rf $SYSTEM/priv-app/contacts*
+      rm -rf $SYSTEM/product/app/Contacts*
+      rm -rf $SYSTEM/product/app/contacts*
+      rm -rf $SYSTEM/product/priv-app/Contacts*
+      rm -rf $SYSTEM/product/priv-app/contacts*
+      # Set install variable
+      ADDON_CORE="priv_app_ContactsGooglePrebuilt.tar.xz";
+      PKG_CORE="ContactsGooglePrebuilt";
+      # Install
+      target_core;
+      # Restore
+      if [ "$SYS_APP_CTT" == "true" ]; then
+        mv $TMP/restore/ContactsProvider $SYSTEM/app/ContactsProvider
+      fi;
+      if [ "$SYS_PRIV_CTT" == "true" ]; then
+        mv $TMP/restore/ContactsProvider $SYSTEM/priv-app/ContactsProvider
+      fi;
+      if [ "$PRO_APP_CTT" == "true" ]; then
+        mv $TMP/restore/ContactsProvider $SYSTEM/product/app/ContactsProvider
+      fi;
+      if [ "$PRO_PRIV_CTT" == "true" ]; then
+        mv $TMP/restore/ContactsProvider $SYSTEM/product/priv-app/ContactsProvider
+      fi;
+    fi;
+    if [ "$supported_deskclock_config" == "$supported_target" ]; then
+      ui_print "Installing Deskclock Google";
+      # Remove AOSP DeskClock
+      rm -rf $SYSTEM/app/DeskClock*
+      rm -rf $SYSTEM/app/Clock*
+      rm -rf $SYSTEM/priv-app/DeskClock*
+      rm -rf $SYSTEM/priv-app/Clock*
+      rm -rf $SYSTEM/product/app/DeskClock*
+      rm -rf $SYSTEM/product/app/Clock*
+      rm -rf $SYSTEM/product/priv-app/DeskClock*
+      rm -rf $SYSTEM/product/priv-app/Clock*
+      # Set install variable
+      ADDON_SYS="sys_app_DeskClockGooglePrebuilt.tar.xz";
+      PKG_SYS="DeskClockGooglePrebuilt";
+      # Install
+      target_sys;
+    fi;
+    if [ "$supported_dialer_config" == "$supported_target" ]; then
+      ui_print "Installing Dialer Google";
+      # Remove AOSP Dialer
+      rm -rf $SYSTEM/app/Dialer*
+      rm -rf $SYSTEM/app/dialer*
+      rm -rf $SYSTEM/priv-app/Dialer*
+      rm -rf $SYSTEM/priv-app/dialer*
+      rm -rf $SYSTEM/product/app/Dialer*
+      rm -rf $SYSTEM/product/app/dialer*
+      rm -rf $SYSTEM/product/priv-app/Dialer*
+      rm -rf $SYSTEM/product/priv-app/dialer*
+      # Set install variable
+      ADDON_CORE="priv_app_DialerGooglePrebuilt.tar.xz";
+      PKG_CORE="DialerGooglePrebuilt";
+      # Install
+      target_core;
+      # Set Google Dialer as default
+      set_google_default;
+    fi;
+    if [ "$supported_markup_config" == "$supported_target" ]; then
+      ui_print "Installing Markup Google";
+      # Remove pre-install Markup
+      rm -rf $SYSTEM/app/MarkupGoogle*
+      rm -rf $SYSTEM/priv-app/MarkupGoogle*
+      rm -rf $SYSTEM/product/app/MarkupGoogle*
+      rm -rf $SYSTEM/product/priv-app/MarkupGoogle*
+      # Set install variable
+      ADDON_SYS="sys_app_MarkupGooglePrebuilt.tar.xz";
+      PKG_SYS="MarkupGooglePrebuilt";
+      # Install
+      target_sys;
+      target_lib32;
+      target_lib64;
+    fi;
+    if [ "$supported_messages_config" == "$supported_target" ]; then
+      ui_print "Installing Messages Google";
+      # Remove AOSP Messages
+      rm -rf $SYSTEM/app/Messages*
+      rm -rf $SYSTEM/app/messages*
+      rm -rf $SYSTEM/app/Messaging*
+      rm -rf $SYSTEM/app/messaging*
+      rm -rf $SYSTEM/priv-app/Messages*
+      rm -rf $SYSTEM/priv-app/messages*
+      rm -rf $SYSTEM/priv-app/Messaging*
+      rm -rf $SYSTEM/priv-app/messaging*
+      rm -rf $SYSTEM/product/app/Messages*
+      rm -rf $SYSTEM/product/app/messages*
+      rm -rf $SYSTEM/product/app/Messaging*
+      rm -rf $SYSTEM/product/app/messaging*
+      rm -rf $SYSTEM/product/priv-app/Messages*
+      rm -rf $SYSTEM/product/priv-app/messages*
+      rm -rf $SYSTEM/product/priv-app/Messaging*
+      rm -rf $SYSTEM/product/priv-app/messaging*
+      # Set install variable
+      ADDON_SYS="sys_app_MessagesGooglePrebuilt.tar.xz";
+      PKG_SYS="MessagesGooglePrebuilt";
+      ADDON_CORE="priv_app_CarrierServices.tar.xz";
+      PKG_CORE="CarrierServices";
+      # Install
+      target_sys;
+      target_core;
+    fi;
+    if [ "$supported_photos_config" == "$supported_target" ]; then
+      ui_print "Installing Photos Google";
+      # Remove pre-install Photos
+      rm -rf $SYSTEM/app/Photos*
+      rm -rf $SYSTEM/app/photos*
+      rm -rf $SYSTEM/priv-app/Photos*
+      rm -rf $SYSTEM/priv-app/photos*
+      rm -rf $SYSTEM/product/app/Photos*
+      rm -rf $SYSTEM/product/app/photos*
+      rm -rf $SYSTEM/product/priv-app/Photos*
+      rm -rf $SYSTEM/product/priv-app/photos*
+      # Set install variable
+      ADDON_SYS="sys_app_PhotosGooglePrebuilt.tar.xz";
+      PKG_SYS="PhotosGooglePrebuilt";
+      # Install
+      target_sys;
+    fi;
+    if [ "$supported_soundpicker_config" == "$supported_target" ]; then
+      ui_print "Installing SoundPicker Google";
+      # Remove pre-install SoundPicker
+      rm -rf $SYSTEM/app/SoundPicker*
+      rm -rf $SYSTEM/priv-app/SoundPicker*
+      rm -rf $SYSTEM/product/app/SoundPicker*
+      rm -rf $SYSTEM/product/priv-app/SoundPicker*
+      # Set install variable
+      ADDON_SYS="sys_app_SoundPickerPrebuilt.tar.xz";
+      PKG_SYS="SoundPickerPrebuilt";
+      # Install
+      target_sys;
+    fi;
+    if [ "$supported_assistant_config" == "$supported_target" ]; then
+      ui_print "Installing Assistant Google";
+      # Remove pre-install Assistant
+      rm -rf $SYSTEM/app/Velvet*
+      rm -rf $SYSTEM/app/velvet*
+      rm -rf $SYSTEM/priv-app/Velvet*
+      rm -rf $SYSTEM/priv-app/velvet*
+      rm -rf $SYSTEM/product/app/Velvet*
+      rm -rf $SYSTEM/product/app/velvet*
+      rm -rf $SYSTEM/product/priv-app/Velvet*
+      rm -rf $SYSTEM/product/priv-app/velvet*
+      # Set install variable
+      ADDON_CORE="priv_app_Velvet.tar.xz";
+      PKG_CORE="Velvet";
       # Install
       target_core;
     fi;
+    if [ "$supported_wellbeing_config" == "$supported_target" ]; then
+      # Only Android SDK 29 and 28, support Google's Wellbeing
+      if [ "$android_sdk" == "$supported_sdk_v29" ] || [ "$android_sdk" == "$supported_sdk_v28" ]; then
+        ui_print "Installing Wellbeing Google";
+        # Remove pre-install Wellbeing
+        rm -rf $SYSTEM/app/Wellbeing*
+        rm -rf $SYSTEM/app/wellbeing*
+        rm -rf $SYSTEM/priv-app/Wellbeing*
+        rm -rf $SYSTEM/priv-app/wellbeing*
+        rm -rf $SYSTEM/product/app/Wellbeing*
+        rm -rf $SYSTEM/product/app/wellbeing*
+        rm -rf $SYSTEM/product/priv-app/Wellbeing*
+        rm -rf $SYSTEM/product/priv-app/wellbeing*
+        # Set install variable
+        ADDON_CORE="priv_app_WellbeingPrebuilt.tar.xz";
+        PKG_CORE="WellbeingPrebuilt";
+        # Install
+        target_core;
+      fi;
+    fi;
   fi;
+  # Separate addon zip file
+  if [ "$ADDON" == "sep" ]; then
+    if [ "$TARGET_CALCULATOR_GOOGLE" == "true" ]; then
+      ui_print "Installing Calculator Google";
+      # Remove AOSP Calculator
+      rm -rf $SYSTEM/app/Calculator*
+      rm -rf $SYSTEM/app/calculator*
+      rm -rf $SYSTEM/app/ExactCalculator
+      rm -rf $SYSTEM/app/Exactcalculator
+      rm -rf $SYSTEM/priv-app/Calculator*
+      rm -rf $SYSTEM/priv-app/calculator*
+      rm -rf $SYSTEM/priv-app/ExactCalculator
+      rm -rf $SYSTEM/priv-app/Exactcalculator
+      rm -rf $SYSTEM/product/app/Calculator*
+      rm -rf $SYSTEM/product/app/calculator*
+      rm -rf $SYSTEM/product/priv-app/Calculator*
+      rm -rf $SYSTEM/product/priv-app/calculator*
+      rm -rf $SYSTEM/product/priv-app/ExactCalculator
+      rm -rf $SYSTEM/product/priv-app/Exactcalculator
+      # Set install variable
+      ADDON_SYS="sys_app_CalculatorGooglePrebuilt.tar.xz";
+      PKG_SYS="CalculatorGooglePrebuilt";
+      # Install
+      target_sys;
+    fi;
+    if [ "$TARGET_CALENDAR_GOOGLE" == "true" ]; then
+      ui_print "Installing Calendar Google";
+      # Backup
+      test -d $SYSTEM/app/CalendarProvider && SYS_APP_CP="true" || SYS_APP_CP="false";
+      test -d $SYSTEM/priv-app/CalendarProvider && SYS_PRIV_CP="true" || SYS_PRIV_CP="false";
+      test -d $SYSTEM/product/app/CalendarProvider && PRO_APP_CP="true" || PRO_APP_CP="false";
+      test -d $SYSTEM/product/priv-app/CalendarProvider && PRO_PRIV_CP="true" || PRO_PRIV_CP="false";
+      if [ "$SYS_APP_CP" == "true" ]; then
+        mv $SYSTEM/app/CalendarProvider $TMP/restore/CalendarProvider
+      fi;
+      if [ "$SYS_PRIV_CP" == "true" ]; then
+        mv $SYSTEM/priv-app/CalendarProvider $TMP/restore/CalendarProvider
+      fi;
+      if [ "$PRO_APP_CP" == "true" ]; then
+        mv $SYSTEM/product/app/CalendarProvider $TMP/restore/CalendarProvider
+      fi;
+      if [ "$PRO_PRIV_CP" == "true" ]; then
+        mv $SYSTEM/product/priv-app/CalendarProvider $TMP/restore/CalendarProvider
+      fi;
+      # Remove AOSP Calendar
+      rm -rf $SYSTEM/app/Calendar*
+      rm -rf $SYSTEM/app/calendar*
+      rm -rf $SYSTEM/app/Etar
+      rm -rf $SYSTEM/priv-app/Calendar*
+      rm -rf $SYSTEM/priv-app/calendar*
+      rm -rf $SYSTEM/priv-app/Etar
+      rm -rf $SYSTEM/product/app/Calendar*
+      rm -rf $SYSTEM/product/app/calendar*
+      rm -rf $SYSTEM/product/app/Etar
+      rm -rf $SYSTEM/product/priv-app/Calendar*
+      rm -rf $SYSTEM/product/priv-app/calendar*
+      rm -rf $SYSTEM/product/priv-app/Etar
+      # Set install variable
+      ADDON_SYS="sys_app_CalendarGooglePrebuilt.tar.xz";
+      PKG_SYS="CalendarGooglePrebuilt";
+      # Install
+      target_sys;
+      # Restore
+      if [ "$SYS_APP_CP" == "true" ]; then
+        mv $TMP/restore/CalendarProvider $SYSTEM/app/CalendarProvider
+      fi;
+      if [ "$SYS_PRIV_CP" == "true" ]; then
+        mv $TMP/restore/CalendarProvider $SYSTEM/priv-app/CalendarProvider
+      fi;
+      if [ "$PRO_APP_CP" == "true" ]; then
+        mv $TMP/restore/CalendarProvider $SYSTEM/product/app/CalendarProvider
+      fi;
+      if [ "$PRO_PRIV_CP" == "true" ]; then
+        mv $TMP/restore/CalendarProvider $SYSTEM/product/priv-app/CalendarProvider
+      fi;
+    fi;
+      if [ "$TARGET_CONTACTS_GOOGLE" == "true" ]; then
+      ui_print "Installing Contacts Google";
+      # Backup
+      test -d $SYSTEM/app/ContactsProvider && SYS_APP_CTT="true" || SYS_APP_CTT="false";
+      test -d $SYSTEM/priv-app/ContactsProvider && SYS_PRIV_CTT="true" || SYS_PRIV_CTT="false";
+      test -d $SYSTEM/product/app/ContactsProvider && PRO_APP_CTT="true" || PRO_APP_CTT="false";
+      test -d $SYSTEM/product/priv-app/ContactsProvider && PRO_PRIV_CTT="true" || PRO_PRIV_CTT="false";
+      if [ "$SYS_APP_CTT" == "true" ]; then
+        mv $SYSTEM/app/ContactsProvider $TMP/restore/ContactsProvider
+      fi;
+      if [ "$SYS_PRIV_CTT" == "true" ]; then
+        mv $SYSTEM/priv-app/ContactsProvider $TMP/restore/ContactsProvider
+      fi;
+      if [ "$PRO_APP_CTT" == "true" ]; then
+        mv $SYSTEM/product/app/ContactsProvider $TMP/restore/ContactsProvider
+      fi;
+      if [ "$PRO_PRIV_CTT" == "true" ]; then
+        mv $SYSTEM/product/priv-app/ContactsProvider $TMP/restore/ContactsProvider
+      fi;
+      # Remove AOSP Contacts
+      rm -rf $SYSTEM/app/Contacts*
+      rm -rf $SYSTEM/app/contacts*
+      rm -rf $SYSTEM/priv-app/Contacts*
+      rm -rf $SYSTEM/priv-app/contacts*
+      rm -rf $SYSTEM/product/app/Contacts*
+      rm -rf $SYSTEM/product/app/contacts*
+      rm -rf $SYSTEM/product/priv-app/Contacts*
+      rm -rf $SYSTEM/product/priv-app/contacts*
+      # Set install variable
+      ADDON_CORE="priv_app_ContactsGooglePrebuilt.tar.xz";
+      PKG_CORE="ContactsGooglePrebuilt";
+      # Install
+      target_core;
+      # Restore
+      if [ "$SYS_APP_CTT" == "true" ]; then
+        mv $TMP/restore/ContactsProvider $SYSTEM/app/ContactsProvider
+      fi;
+      if [ "$SYS_PRIV_CTT" == "true" ]; then
+        mv $TMP/restore/ContactsProvider $SYSTEM/priv-app/ContactsProvider
+      fi;
+      if [ "$PRO_APP_CTT" == "true" ]; then
+        mv $TMP/restore/ContactsProvider $SYSTEM/product/app/ContactsProvider
+      fi;
+      if [ "$PRO_PRIV_CTT" == "true" ]; then
+        mv $TMP/restore/ContactsProvider $SYSTEM/product/priv-app/ContactsProvider
+      fi;
+    fi;
+    if [ "$TARGET_DESKCLOCK_GOOGLE" == "true" ]; then
+      ui_print "Installing Deskclock Google";
+      # Remove AOSP DeskClock
+      rm -rf $SYSTEM/app/DeskClock*
+      rm -rf $SYSTEM/app/Clock*
+      rm -rf $SYSTEM/priv-app/DeskClock*
+      rm -rf $SYSTEM/priv-app/Clock*
+      rm -rf $SYSTEM/product/app/DeskClock*
+      rm -rf $SYSTEM/product/app/Clock*
+      rm -rf $SYSTEM/product/priv-app/DeskClock*
+      rm -rf $SYSTEM/product/priv-app/Clock*
+      # Set install variable
+      ADDON_SYS="sys_app_DeskClockGooglePrebuilt.tar.xz";
+      PKG_SYS="DeskClockGooglePrebuilt";
+      # Install
+      target_sys;
+    fi;
+      if [ "$TARGET_DIALER_GOOGLE" == "true" ]; then
+      ui_print "Installing Dialer Google";
+      # Remove AOSP Dialer
+      rm -rf $SYSTEM/app/Dialer*
+      rm -rf $SYSTEM/app/dialer*
+      rm -rf $SYSTEM/priv-app/Dialer*
+      rm -rf $SYSTEM/priv-app/dialer*
+      rm -rf $SYSTEM/product/app/Dialer*
+      rm -rf $SYSTEM/product/app/dialer*
+      rm -rf $SYSTEM/product/priv-app/Dialer*
+      rm -rf $SYSTEM/product/priv-app/dialer*
+      # Set install variable
+      ADDON_CORE="priv_app_DialerGooglePrebuilt.tar.xz";
+      PKG_CORE="DialerGooglePrebuilt";
+      # Install
+      target_core;
+      # Set Google Dialer as default
+      set_google_default;
+    fi;
+      if [ "$TARGET_MARKUP_GOOGLE" == "true" ]; then
+      ui_print "Installing Markup Google";
+      # Remove pre-install Markup
+      rm -rf $SYSTEM/app/MarkupGoogle*
+      rm -rf $SYSTEM/priv-app/MarkupGoogle*
+      rm -rf $SYSTEM/product/app/MarkupGoogle*
+      rm -rf $SYSTEM/product/priv-app/MarkupGoogle*
+      # Set install variable
+      ADDON_SYS="sys_app_MarkupGooglePrebuilt.tar.xz";
+      PKG_SYS="MarkupGooglePrebuilt";
+      # Install
+      target_sys;
+      target_lib32;
+      target_lib64;
+    fi;
+    if [ "$TARGET_MESSAGES_GOOGLE" == "true" ]; then
+      ui_print "Installing Messages Google";
+      # Remove AOSP Messages
+      rm -rf $SYSTEM/app/Messages*
+      rm -rf $SYSTEM/app/messages*
+      rm -rf $SYSTEM/app/Messaging*
+      rm -rf $SYSTEM/app/messaging*
+      rm -rf $SYSTEM/priv-app/Messages*
+      rm -rf $SYSTEM/priv-app/messages*
+      rm -rf $SYSTEM/priv-app/Messaging*
+      rm -rf $SYSTEM/priv-app/messaging*
+      rm -rf $SYSTEM/product/app/Messages*
+      rm -rf $SYSTEM/product/app/messages*
+      rm -rf $SYSTEM/product/app/Messaging*
+      rm -rf $SYSTEM/product/app/messaging*
+      rm -rf $SYSTEM/product/priv-app/Messages*
+      rm -rf $SYSTEM/product/priv-app/messages*
+      rm -rf $SYSTEM/product/priv-app/Messaging*
+      rm -rf $SYSTEM/product/priv-app/messaging*
+      # Set install variable
+      if [ "$device_architecture" == "$ANDROID_PLATFORM_ARM32" ]; then
+        ADDON_SYS="sys_app_MessagesGooglePrebuilt_arm.tar.xz";
+        PKG_SYS="MessagesGooglePrebuilt";
+        ADDON_CORE="priv_app_CarrierServices_arm.tar.xz";
+        PKG_CORE="CarrierServices";
+      fi;
+      if [ "$device_architecture" == "$ANDROID_PLATFORM_ARM64" ]; then
+        ADDON_SYS="sys_app_MessagesGooglePrebuilt_arm64.tar.xz";
+        PKG_SYS="MessagesGooglePrebuilt";
+        ADDON_CORE="priv_app_CarrierServices_arm64.tar.xz";
+        PKG_CORE="CarrierServices";
+      fi;
+      # Install
+      target_sys;
+      target_core;
+    fi;
+    if [ "$TARGET_PHOTOS_GOOGLE" == "true" ]; then
+      ui_print "Installing Photos Google";
+      # Remove pre-install Photos
+      rm -rf $SYSTEM/app/Photos*
+      rm -rf $SYSTEM/app/photos*
+      rm -rf $SYSTEM/priv-app/Photos*
+      rm -rf $SYSTEM/priv-app/photos*
+      rm -rf $SYSTEM/product/app/Photos*
+      rm -rf $SYSTEM/product/app/photos*
+      rm -rf $SYSTEM/product/priv-app/Photos*
+      rm -rf $SYSTEM/product/priv-app/photos*
+      # Set install variable
+      ADDON_SYS="sys_app_PhotosGooglePrebuilt.tar.xz";
+      PKG_SYS="PhotosGooglePrebuilt";
+      # Install
+      target_sys;
+    fi;
+    if [ "$TARGET_SOUNDPICKER_GOOGLE" == "true" ]; then
+      ui_print "Installing SoundPicker Google";
+      # Remove pre-install SoundPicker
+      rm -rf $SYSTEM/app/SoundPicker*
+      rm -rf $SYSTEM/priv-app/SoundPicker*
+      rm -rf $SYSTEM/product/app/SoundPicker*
+      rm -rf $SYSTEM/product/priv-app/SoundPicker*
+      # Set install variable
+      ADDON_SYS="sys_app_SoundPickerPrebuilt.tar.xz";
+      PKG_SYS="SoundPickerPrebuilt";
+      # Install
+      target_sys;
+    fi;
+    if [ "$TARGET_ASSISTANT_GOOGLE" == "true" ]; then
+      ui_print "Installing Assistant Google";
+      # Remove pre-install Assistant
+      rm -rf $SYSTEM/app/Velvet*
+      rm -rf $SYSTEM/app/velvet*
+      rm -rf $SYSTEM/priv-app/Velvet*
+      rm -rf $SYSTEM/priv-app/velvet*
+      rm -rf $SYSTEM/product/app/Velvet*
+      rm -rf $SYSTEM/product/app/velvet*
+      rm -rf $SYSTEM/product/priv-app/Velvet*
+      rm -rf $SYSTEM/product/priv-app/velvet*
+      # Set install variable
+      ADDON_CORE="priv_app_Velvet.tar.xz";
+      PKG_CORE="Velvet";
+      # Install
+      target_core;
+    fi;
+    if [ "$TARGET_WELLBEING_GOOGLE" == "true" ]; then
+      # Only Android SDK 29 and 28, support Google's Wellbeing
+      if [ "$android_sdk" == "$supported_sdk_v29" ] || [ "$android_sdk" == "$supported_sdk_v28" ]; then
+        ui_print "Installing Wellbeing Google";
+        # Remove pre-install Wellbeing
+        rm -rf $SYSTEM/app/Wellbeing*
+        rm -rf $SYSTEM/app/wellbeing*
+        rm -rf $SYSTEM/priv-app/Wellbeing*
+        rm -rf $SYSTEM/priv-app/wellbeing*
+        rm -rf $SYSTEM/product/app/Wellbeing*
+        rm -rf $SYSTEM/product/app/wellbeing*
+        rm -rf $SYSTEM/product/priv-app/Wellbeing*
+        rm -rf $SYSTEM/product/priv-app/wellbeing*
+        # Set install variable
+        ADDON_CORE="priv_app_WellbeingPrebuilt.tar.xz";
+        PKG_CORE="WellbeingPrebuilt";
+        # Install
+        target_core;
+      fi;
+    fi;
+  fi;
+}
+
+# Set addon package installation
+set_addon_install() {
+  set_addon_zip;
   ui_print " ";
   ui_print "Done";
 }
