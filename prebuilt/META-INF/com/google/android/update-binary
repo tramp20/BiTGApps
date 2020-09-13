@@ -56,7 +56,7 @@ export OUTFD="$OUTFD"
 export TMP="/tmp"
 export INTERNAL="/sdcard"
 export EXTERNAL="/sdcard1"
-# Supported Android SDK Versions 29, 28, 27, 25
+# Supported Android SDK Versions 30, 29, 28, 27, 25
 export TARGET_ANDROID_SDK=""
 # Supported Android platforms ARM & ARM64
 export TARGET_ANDROID_ARCH=""

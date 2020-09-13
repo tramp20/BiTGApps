@@ -4,6 +4,8 @@ A custom gapps package with minimal install. Support custom features such as `Ba
 
 ## Support Android Version
 
+* Android R `(11.0.0)`
+
 * Android Q `(10.0.0)`
 
 * Pie `(9.0.0)`
