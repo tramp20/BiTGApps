@@ -94,6 +94,11 @@ remove_line() {
 }
 
 # Set package defaults
+opt_defaults() {
+  OPTv29="$TMP/gms_opt_v29.log";
+  OPTv30="$TMP/gms_opt_v30.log";
+}
+
 build_defaults() {
   # Set temporary zip directory
   ZIP_FILE="$TMP/zip";
@@ -112,10 +117,12 @@ build_defaults() {
   TMP_SYS="$UNZIP_DIR/tmp_sys";
   TMP_SYS_ROOT="$UNZIP_DIR/tmp_sys_root";
   TMP_SYS_AOSP="$UNZIP_DIR/tmp_sys_aosp";
+  TMP_SYS_JAR="$UNZIP_DIR/tmp_sys_jar";
   TMP_PRIV="$UNZIP_DIR/tmp_priv";
   TMP_PRIV_ROOT="$UNZIP_DIR/tmp_priv_root";
   TMP_PRIV_SETUP="$UNZIP_DIR/tmp_priv_setup";
   TMP_PRIV_AOSP="$UNZIP_DIR/tmp_priv_aosp";
+  TMP_PRIV_JAR="$UNZIP_DIR/tmp_priv_jar";
   TMP_LIB="$UNZIP_DIR/tmp_lib";
   TMP_LIB64="$UNZIP_DIR/tmp_lib64";
   TMP_FRAMEWORK="$UNZIP_DIR/tmp_framework";
@@ -151,9 +158,8 @@ build_defaults() {
   bootlog_AB="/cache/bitgapps/init-AB.log";
   bootlog_A="/cache/bitgapps/init-A.log";
   bootlog_SYS="/cache/bitgapps/init-SYS.log";
+  bootlog_R="/cache/bitgapps/init-R.log";
   OPTv28="/cache/bitgapps/gms_opt_v28.log";
-  OPTv29="/cache/bitgapps/gms_opt_v29.log";
-  OPTv30="/cache/bitgapps/gms_opt_v30.log";
   # CTS defaults
   CTS_DEFAULT_SYSTEM_EXT_BUILD_FINGERPRINT="ro.system.build.fingerprint=";
   CTS_DEFAULT_SYSTEM_BUILD_FINGERPRINT="ro.build.fingerprint=";
@@ -476,6 +482,18 @@ boot_SYS() {
   fi;
 }
 
+boot_R() {
+  INIT="/system_root/system/etc/init/hw/init.rc"
+  if [ -f $INIT ] && [ -n "$(cat $INIT | grep ro.zygote)" ]; then
+    sed -i '/init.${ro.zygote}.rc/a\\import /system/etc/init/hw/init.bootlog.rc' $INIT
+    cp -f $TMP/init.bootlog.rc /system_root/system/etc/init/hw/init.bootlog.rc
+    chmod 0750 /system_root/system/etc/init/hw/init.bootlog.rc
+    chcon -h u:object_r:system_file:s0 "/system_root/system/etc/init/hw/init.bootlog.rc";
+  else
+    echo "ERROR: Unable to find kernel init" >> $bootlog_R;
+  fi;
+}
+
 # Bind mountpoint /system to /system_root if we have system-as-root
 on_AB() {
   if [ -f /system/init.rc ]; then
@@ -512,6 +530,7 @@ on_mount_failed() {
   cp -f $TMP/recovery.log /cache/bitgapps/recovery.log 2>/dev/null;
   cp -f /etc/fstab /cache/bitgapps/fstab 2>/dev/null;
   cp -f /etc/recovery.fstab /cache/bitgapps/recovery.fstab 2>/dev/null;
+  echo "$ANDROID_ROOT" >> /cache/bitgapps/mount.log 2>/dev/null;
   tar -cz -f "$TMP/bitgapps_debug_failed_logs.tar.gz" *
   cp -f $TMP/bitgapps_debug_failed_logs.tar.gz $INTERNAL/bitgapps_debug_failed_logs.tar.gz
   # Checkout log path
@@ -528,6 +547,8 @@ on_install_failed() {
   cp -f /etc/fstab /cache/bitgapps/fstab 2>/dev/null;
   cp -f /etc/recovery.fstab /cache/bitgapps/recovery.fstab 2>/dev/null;
   cp -f $SYSTEM/build.prop /cache/bitgapps/system.prop 2>/dev/null;
+  cp -f $SYSTEM/product/build.prop /cache/bitgapps/product.prop 2>/dev/null;
+  cp -f $SYSTEM/system_ext/build.prop /cache/bitgapps/ext.prop 2>/dev/null;
   if [ "$device_vendorpartition" == "true" ]; then
     cp -f $VENDOR/build.prop /cache/bitgapps/vendor.prop 2>/dev/null;
   fi;
@@ -537,6 +558,7 @@ on_install_failed() {
   cp -f $INTERNAL/addon-config.prop /cache/bitgapps/addon-config.prop 2>/dev/null;
   cp -f $INTERNAL/cts-config.prop /cache/bitgapps/cts-config.prop 2>/dev/null;
   cp -f $INTERNAL/setup-config.prop /cache/bitgapps/setup-config.prop 2>/dev/null;
+  echo "$ANDROID_ROOT" >> /cache/bitgapps/mount.log 2>/dev/null;
   tar -cz -f "$TMP/bitgapps_debug_failed_logs.tar.gz" *
   cp -f $TMP/bitgapps_debug_failed_logs.tar.gz $INTERNAL/bitgapps_debug_failed_logs.tar.gz
   # Checkout log path
@@ -548,9 +570,13 @@ on_install_complete() {
   rm -rf $INTERNAL/bitgapps_debug_complete_logs.tar.gz
   cd /cache/bitgapps
   cp -f $TMP/recovery.log /cache/bitgapps/recovery.log 2>/dev/null;
+  cp -f $TMP/gms_opt_v29.log /cache/bitgapps/gms_opt_v29.log 2>/dev/null;
+  cp -f $TMP/gms_opt_v30.log /cache/bitgapps/gms_opt_v30.log 2>/dev/null;
   cp -f /etc/fstab /cache/bitgapps/fstab 2>/dev/null;
   cp -f /etc/recovery.fstab /cache/bitgapps/recovery.fstab 2>/dev/null;
   cp -f $SYSTEM/build.prop /cache/bitgapps/system.prop 2>/dev/null;
+  cp -f $SYSTEM/product/build.prop /cache/bitgapps/product.prop 2>/dev/null;
+  cp -f $SYSTEM/system_ext/build.prop /cache/bitgapps/ext.prop 2>/dev/null;
   if [ "$device_vendorpartition" == "true" ]; then
     cp -f $VENDOR/build.prop /cache/bitgapps/vendor.prop 2>/dev/null;
   fi;
@@ -560,6 +586,7 @@ on_install_complete() {
   cp -f $INTERNAL/addon-config.prop /cache/bitgapps/addon-config.prop 2>/dev/null;
   cp -f $INTERNAL/cts-config.prop /cache/bitgapps/cts-config.prop 2>/dev/null;
   cp -f $INTERNAL/setup-config.prop /cache/bitgapps/setup-config.prop 2>/dev/null;
+  echo "$ANDROID_ROOT" >> /cache/bitgapps/mount.log 2>/dev/null;
   tar -cz -f "$TMP/bitgapps_debug_complete_logs.tar.gz" *
   cp -f $TMP/bitgapps_debug_complete_logs.tar.gz $INTERNAL/bitgapps_debug_complete_logs.tar.gz
   # Checkout log path
@@ -935,8 +962,71 @@ set_aosp_default() {
 }
 
 # Set pathmap
+ext_pathmap() {
+  if [ "$android_sdk" == "$supported_sdk_v30" ]; then
+    SYSTEM_ADDOND="$SYSTEM/system_ext/addon.d";
+    SYSTEM_APP="$SYSTEM/system_ext/app";
+    SYSTEM_PRIV_APP="$SYSTEM/system_ext/priv-app";
+    SYSTEM_ETC_CONFIG="$SYSTEM/system_ext/etc/sysconfig";
+    SYSTEM_ETC_DEFAULT="$SYSTEM/system_ext/etc/default-permissions";
+    SYSTEM_ETC_PERM="$SYSTEM/system_ext/etc/permissions";
+    SYSTEM_ETC_PREF="$SYSTEM/system_ext/etc/preferred-apps";
+    SYSTEM_FRAMEWORK="$SYSTEM/system_ext/framework";
+    SYSTEM_LIB="$SYSTEM/system_ext/lib";
+    SYSTEM_LIB64="$SYSTEM/system_ext/lib64";
+    mkdir $SYSTEM_ADDOND 2>/dev/null;
+    mkdir $SYSTEM_ETC_CONFIG 2>/dev/null;
+    mkdir $SYSTEM_ETC_DEFAULT 2>/dev/null;
+    mkdir $SYSTEM_ETC_PREF 2>/dev/null;
+    mkdir $SYSTEM_LIB 2>/dev/null;
+    mkdir $SYSTEM_LIB64 2>/dev/null;
+    chmod 0755 $SYSTEM_ADDOND 2>/dev/null;
+    chmod 0755 $SYSTEM_ETC_CONFIG 2>/dev/null;
+    chmod 0755 $SYSTEM_ETC_DEFAULT 2>/dev/null;
+    chmod 0755 $SYSTEM_ETC_PREF 2>/dev/null;
+    chmod 0755 $SYSTEM_LIB 2>/dev/null;
+    chmod 0755 $SYSTEM_LIB64 2>/dev/null;
+    chcon -h u:object_r:system_file:s0 $SYSTEM_ADDOND 2>/dev/null;
+    chcon -h u:object_r:system_file:s0 $SYSTEM_ETC_CONFIG 2>/dev/null;
+    chcon -h u:object_r:system_file:s0 $SYSTEM_ETC_DEFAULT 2>/dev/null;
+    chcon -h u:object_r:system_file:s0 $SYSTEM_ETC_PREF 2>/dev/null;
+    chcon -h u:object_r:system_file:s0 $SYSTEM_LIB 2>/dev/null;
+    chcon -h u:object_r:system_file:s0 $SYSTEM_LIB64 2>/dev/null;
+  fi;
+}
+
+ext_product() {
+  if [ "$android_sdk" == "$supported_sdk_v30" ]; then
+    SYSTEM_ADDOND="$SYSTEM/product/addon.d";
+    SYSTEM_APP="$SYSTEM/product/app";
+    SYSTEM_PRIV_APP="$SYSTEM/product/priv-app";
+    SYSTEM_ETC_CONFIG="$SYSTEM/product/etc/sysconfig";
+    SYSTEM_ETC_DEFAULT="$SYSTEM/product/etc/default-permissions";
+    SYSTEM_ETC_PERM="$SYSTEM/product/etc/permissions";
+    SYSTEM_ETC_PREF="$SYSTEM/product/etc/preferred-apps";
+    SYSTEM_FRAMEWORK="$SYSTEM/product/framework";
+    SYSTEM_LIB="$SYSTEM/product/lib";
+    SYSTEM_LIB64="$SYSTEM/product/lib64";
+  fi;
+}
+
+ext_tmp() {
+  if [ "$android_sdk" == "$supported_sdk_v30" ]; then
+    SYSTEM_ADDOND="$SYSTEM/addon.d";
+    SYSTEM_APP="$SYSTEM/app";
+    SYSTEM_PRIV_APP="$SYSTEM/priv-app";
+    SYSTEM_ETC_CONFIG="$SYSTEM/etc/sysconfig";
+    SYSTEM_ETC_DEFAULT="$SYSTEM/etc/default-permissions";
+    SYSTEM_ETC_PERM="$SYSTEM/etc/permissions";
+    SYSTEM_ETC_PREF="$SYSTEM/etc/preferred-apps";
+    SYSTEM_FRAMEWORK="$SYSTEM/framework";
+    SYSTEM_LIB="$SYSTEM/lib";
+    SYSTEM_LIB64="$SYSTEM/lib64";
+  fi;
+}
+
 product_pathmap() {
-  if [ "$android_sdk" == "$supported_sdk_v30" ] || [ "$android_sdk" == "$supported_sdk_v29" ]; then
+  if [ "$android_sdk" == "$supported_sdk_v29" ]; then
     SYSTEM_ADDOND="$SYSTEM/product/addon.d";
     SYSTEM_APP="$SYSTEM/product/app";
     SYSTEM_PRIV_APP="$SYSTEM/product/priv-app";
@@ -963,7 +1053,7 @@ product_pathmap() {
 }
 
 tmp_pathmap() {
-  if [ "$android_sdk" == "$supported_sdk_v30" ] || [ "$android_sdk" == "$supported_sdk_v29" ]; then
+  if [ "$android_sdk" == "$supported_sdk_v29" ]; then
     SYSTEM_ADDOND="$SYSTEM/addon.d";
     SYSTEM_APP="$SYSTEM/app";
     SYSTEM_PRIV_APP="$SYSTEM/priv-app";
@@ -998,6 +1088,12 @@ system_pathmap() {
     chcon -h u:object_r:system_file:s0 $SYSTEM_ETC_PREF 2>/dev/null;
   fi;
 }
+
+# Android library backed by framework
+shared_library() {
+  SYSTEM_APP_SHARED="$SYSTEM/app";
+  SYSTEM_PRIV_APP_SHARED="$SYSTEM/priv-app";
+}
 # end pathmap
 
 # Create temporary log directory
@@ -1028,10 +1124,12 @@ mk_component() {
     mkdir $UNZIP_DIR/tmp_sys
     mkdir $UNZIP_DIR/tmp_sys_root
     mkdir $UNZIP_DIR/tmp_sys_aosp
+    mkdir $UNZIP_DIR/tmp_sys_jar
     mkdir $UNZIP_DIR/tmp_priv
     mkdir $UNZIP_DIR/tmp_priv_root
     mkdir $UNZIP_DIR/tmp_priv_setup
     mkdir $UNZIP_DIR/tmp_priv_aosp
+    mkdir $UNZIP_DIR/tmp_priv_jar
     mkdir $UNZIP_DIR/tmp_lib
     mkdir $UNZIP_DIR/tmp_lib64
     mkdir $UNZIP_DIR/tmp_framework
@@ -1046,10 +1144,12 @@ mk_component() {
     chmod 0755 $UNZIP_DIR/tmp_sys
     chmod 0755 $UNZIP_DIR/tmp_sys_root
     chmod 0755 $UNZIP_DIR/tmp_sys_aosp
+    chmod 0755 $UNZIP_DIR/tmp_sys_jar
     chmod 0755 $UNZIP_DIR/tmp_priv
     chmod 0755 $UNZIP_DIR/tmp_priv_root
     chmod 0755 $UNZIP_DIR/tmp_priv_setup
     chmod 0755 $UNZIP_DIR/tmp_priv_aosp
+    chmod 0755 $UNZIP_DIR/tmp_priv_jar
     chmod 0755 $UNZIP_DIR/tmp_lib
     chmod 0755 $UNZIP_DIR/tmp_lib64
     chmod 0755 $UNZIP_DIR/tmp_framework
@@ -1578,9 +1678,766 @@ pre_installed() {
   fi;
 }
 
+pre_installed_ext() {
+  if [ "$GSF" == "true" ]; then
+    rm -rf $SYSTEM/addon.d/30*
+    rm -rf $SYSTEM/addon.d/69*
+    rm -rf $SYSTEM/addon.d/70*
+    rm -rf $SYSTEM/addon.d/71*
+    rm -rf $SYSTEM/addon.d/74*
+    rm -rf $SYSTEM/addon.d/75*
+    rm -rf $SYSTEM/addon.d/78*
+    rm -rf $SYSTEM/addon.d/90*
+    rm -rf $SYSTEM/app/AndroidAuto*
+    rm -rf $SYSTEM/app/arcore
+    rm -rf $SYSTEM/app/Books*
+    rm -rf $SYSTEM/app/CarHomeGoogle
+    rm -rf $SYSTEM/app/CalculatorGoogle*
+    rm -rf $SYSTEM/app/CalendarGoogle*
+    rm -rf $SYSTEM/app/CarHomeGoogle
+    rm -rf $SYSTEM/app/Chrome*
+    rm -rf $SYSTEM/app/CloudPrint*
+    rm -rf $SYSTEM/app/DevicePersonalizationServices
+    rm -rf $SYSTEM/app/DMAgent
+    rm -rf $SYSTEM/app/Drive
+    rm -rf $SYSTEM/app/Duo
+    rm -rf $SYSTEM/app/EditorsDocs
+    rm -rf $SYSTEM/app/Editorssheets
+    rm -rf $SYSTEM/app/EditorsSlides
+    rm -rf $SYSTEM/app/ExchangeServices
+    rm -rf $SYSTEM/app/FaceLock
+    rm -rf $SYSTEM/app/Fitness*
+    rm -rf $SYSTEM/app/GalleryGo*
+    rm -rf $SYSTEM/app/Gcam*
+    rm -rf $SYSTEM/app/GCam*
+    rm -rf $SYSTEM/app/Gmail*
+    rm -rf $SYSTEM/app/GoogleCamera*
+    rm -rf $SYSTEM/app/GoogleCalendar*
+    rm -rf $SYSTEM/app/GoogleCalendarSyncAdapter
+    rm -rf $SYSTEM/app/GoogleContactsSyncAdapter
+    rm -rf $SYSTEM/app/GoogleCloudPrint
+    rm -rf $SYSTEM/app/GoogleEarth
+    rm -rf $SYSTEM/app/GoogleExtshared
+    rm -rf $SYSTEM/app/GooglePrintRecommendationService
+    rm -rf $SYSTEM/app/GoogleGo*
+    rm -rf $SYSTEM/app/GoogleHome*
+    rm -rf $SYSTEM/app/GoogleHindiIME*
+    rm -rf $SYSTEM/app/GoogleKeep*
+    rm -rf $SYSTEM/app/GoogleJapaneseInput*
+    rm -rf $SYSTEM/app/GoogleLoginService*
+    rm -rf $SYSTEM/app/GoogleMusic*
+    rm -rf $SYSTEM/app/GoogleNow*
+    rm -rf $SYSTEM/app/GooglePhotos*
+    rm -rf $SYSTEM/app/GooglePinyinIME*
+    rm -rf $SYSTEM/app/GooglePlus
+    rm -rf $SYSTEM/app/GoogleTTS*
+    rm -rf $SYSTEM/app/GoogleVrCore*
+    rm -rf $SYSTEM/app/GoogleZhuyinIME*
+    rm -rf $SYSTEM/app/Hangouts
+    rm -rf $SYSTEM/app/KoreanIME*
+    rm -rf $SYSTEM/app/Maps
+    rm -rf $SYSTEM/app/Markup*
+    rm -rf $SYSTEM/app/Music2*
+    rm -rf $SYSTEM/app/Newsstand
+    rm -rf $SYSTEM/app/NexusWallpapers*
+    rm -rf $SYSTEM/app/Ornament
+    rm -rf $SYSTEM/app/Photos*
+    rm -rf $SYSTEM/app/PlayAutoInstallConfig*
+    rm -rf $SYSTEM/app/PlayGames*
+    rm -rf $SYSTEM/app/PrebuiltExchange3Google
+    rm -rf $SYSTEM/app/PrebuiltGmail
+    rm -rf $SYSTEM/app/PrebuiltKeep
+    rm -rf $SYSTEM/app/Street
+    rm -rf $SYSTEM/app/Stickers*
+    rm -rf $SYSTEM/app/TalkBack
+    rm -rf $SYSTEM/app/talkBack
+    rm -rf $SYSTEM/app/talkback
+    rm -rf $SYSTEM/app/TranslatePrebuilt
+    rm -rf $SYSTEM/app/Tycho
+    rm -rf $SYSTEM/app/Videos
+    rm -rf $SYSTEM/app/Wallet
+    rm -rf $SYSTEM/app/WallpapersBReel*
+    rm -rf $SYSTEM/app/YouTube
+    rm -rf $SYSTEM/etc/default-permissions/default-permissions.xml
+    rm -rf $SYSTEM/etc/default-permissions/opengapps-permissions.xml
+    rm -rf $SYSTEM/etc/permissions/default-permissions.xml
+    rm -rf $SYSTEM/etc/permissions/privapp-permissions-elgoog.xml
+    rm -rf $SYSTEM/etc/permissions/privapp-permissions-google*
+    rm -rf $SYSTEM/etc/permissions/com.google.android.camera*
+    rm -rf $SYSTEM/etc/permissions/com.google.android.dialer*
+    rm -rf $SYSTEM/etc/permissions/com.google.android.maps*
+    rm -rf $SYSTEM/etc/permissions/split-permissions-google.xml
+    rm -rf $SYSTEM/etc/preferred-apps/google.xml
+    rm -rf $SYSTEM/etc/preferred-apps/google_build.xml
+    rm -rf $SYSTEM/etc/sysconfig/pixel_2017_exclusive.xml
+    rm -rf $SYSTEM/etc/sysconfig/pixel_experience_2017.xml
+    rm -rf $SYSTEM/etc/sysconfig/gmsexpress.xml
+    rm -rf $SYSTEM/etc/sysconfig/googledialergo-sysconfig.xml
+    rm -rf $SYSTEM/etc/sysconfig/google-hiddenapi-package-whitelist.xml
+    rm -rf $SYSTEM/etc/sysconfig/google.xml
+    rm -rf $SYSTEM/etc/sysconfig/google_build.xml
+    rm -rf $SYSTEM/etc/sysconfig/google_experience.xml
+    rm -rf $SYSTEM/etc/sysconfig/google_exclusives_enable.xml
+    rm -rf $SYSTEM/etc/sysconfig/go_experience.xml
+    rm -rf $SYSTEM/etc/sysconfig/nga.xml
+    rm -rf $SYSTEM/etc/sysconfig/nexus.xml
+    rm -rf $SYSTEM/etc/sysconfig/pixel*
+    rm -rf $SYSTEM/etc/sysconfig/turbo.xml
+    rm -rf $SYSTEM/etc/sysconfig/wellbeing.xml
+    rm -rf $SYSTEM/framework/com.google.android.camera*
+    rm -rf $SYSTEM/framework/com.google.android.dialer*
+    rm -rf $SYSTEM/framework/com.google.android.maps*
+    rm -rf $SYSTEM/framework/oat/arm/com.google.android.camera*
+    rm -rf $SYSTEM/framework/oat/arm/com.google.android.dialer*
+    rm -rf $SYSTEM/framework/oat/arm/com.google.android.maps*
+    rm -rf $SYSTEM/framework/oat/arm64/com.google.android.camera*
+    rm -rf $SYSTEM/framework/oat/arm64/com.google.android.dialer*
+    rm -rf $SYSTEM/framework/oat/arm64/com.google.android.maps*
+    rm -rf $SYSTEM/lib/libaiai-annotators.so
+    rm -rf $SYSTEM/lib/libcronet.70.0.3522.0.so
+    rm -rf $SYSTEM/lib/libfilterpack_facedetect.so
+    rm -rf $SYSTEM/lib/libfrsdk.so
+    rm -rf $SYSTEM/lib/libgcam.so
+    rm -rf $SYSTEM/lib/libgcam_swig_jni.so
+    rm -rf $SYSTEM/lib/libocr.so
+    rm -rf $SYSTEM/lib/libparticle-extractor_jni.so
+    rm -rf $SYSTEM/lib64/libbarhopper.so
+    rm -rf $SYSTEM/lib64/libfacenet.so
+    rm -rf $SYSTEM/lib64/libfilterpack_facedetect.so
+    rm -rf $SYSTEM/lib64/libfrsdk.so
+    rm -rf $SYSTEM/lib64/libgcam.so
+    rm -rf $SYSTEM/lib64/libgcam_swig_jni.so
+    rm -rf $SYSTEM/lib64/libsketchology_native.so
+    rm -rf $SYSTEM/overlay/PixelConfigOverlay*
+    rm -rf $SYSTEM/priv-app/Aiai*
+    rm -rf $SYSTEM/priv-app/AmbientSense*
+    rm -rf $SYSTEM/priv-app/AndroidAuto*
+    rm -rf $SYSTEM/priv-app/AndroidMigrate*
+    rm -rf $SYSTEM/priv-app/AndroidPlatformServices
+    rm -rf $SYSTEM/priv-app/CalendarGoogle*
+    rm -rf $SYSTEM/priv-app/CalculatorGoogle*
+    rm -rf $SYSTEM/priv-app/Camera*
+    rm -rf $SYSTEM/priv-app/CarrierServices
+    rm -rf $SYSTEM/priv-app/CarrierSetup
+    rm -rf $SYSTEM/priv-app/ConfigUpdater
+    rm -rf $SYSTEM/priv-app/DataTransferTool
+    rm -rf $SYSTEM/priv-app/DeviceHealthServices
+    rm -rf $SYSTEM/priv-app/DevicePersonalizationServices
+    rm -rf $SYSTEM/priv-app/DigitalWellbeing*
+    rm -rf $SYSTEM/priv-app/FaceLock
+    rm -rf $SYSTEM/priv-app/Gcam*
+    rm -rf $SYSTEM/priv-app/GCam*
+    rm -rf $SYSTEM/priv-app/GCS
+    rm -rf $SYSTEM/priv-app/GmsCore*
+    rm -rf $SYSTEM/priv-app/GoogleCalculator*
+    rm -rf $SYSTEM/priv-app/GoogleCalendar*
+    rm -rf $SYSTEM/priv-app/GoogleCamera*
+    rm -rf $SYSTEM/priv-app/GoogleBackupTransport
+    rm -rf $SYSTEM/priv-app/GoogleExtservices
+    rm -rf $SYSTEM/priv-app/GoogleExtServicesPrebuilt
+    rm -rf $SYSTEM/priv-app/GoogleFeedback
+    rm -rf $SYSTEM/priv-app/GoogleOneTimeInitializer
+    rm -rf $SYSTEM/priv-app/GooglePartnerSetup
+    rm -rf $SYSTEM/priv-app/GoogleRestore
+    rm -rf $SYSTEM/priv-app/GoogleServicesFramework
+    rm -rf $SYSTEM/priv-app/HotwordEnrollment*
+    rm -rf $SYSTEM/priv-app/HotWordEnrollment*
+    rm -rf $SYSTEM/priv-app/matchmaker*
+    rm -rf $SYSTEM/priv-app/Matchmaker*
+    rm -rf $SYSTEM/priv-app/Phonesky
+    rm -rf $SYSTEM/priv-app/PixelLive*
+    rm -rf $SYSTEM/priv-app/PrebuiltGmsCore*
+    rm -rf $SYSTEM/priv-app/PixelSetupWizard*
+    rm -rf $SYSTEM/priv-app/SetupWizard*
+    rm -rf $SYSTEM/priv-app/Tag*
+    rm -rf $SYSTEM/priv-app/Tips*
+    rm -rf $SYSTEM/priv-app/Turbo*
+    rm -rf $SYSTEM/priv-app/Velvet
+    rm -rf $SYSTEM/priv-app/Wellbeing*
+    rm -rf $SYSTEM/usr/srec/en-US
+    rm -rf $SYSTEM/system_ext/addon.d/30*
+    rm -rf $SYSTEM/system_ext/addon.d/69*
+    rm -rf $SYSTEM/system_ext/addon.d/70*
+    rm -rf $SYSTEM/system_ext/addon.d/71*
+    rm -rf $SYSTEM/system_ext/addon.d/74*
+    rm -rf $SYSTEM/system_ext/addon.d/75*
+    rm -rf $SYSTEM/system_ext/addon.d/78*
+    rm -rf $SYSTEM/system_ext/addon.d/90*
+    rm -rf $SYSTEM/system_ext/app/AndroidAuto*
+    rm -rf $SYSTEM/system_ext/app/arcore
+    rm -rf $SYSTEM/system_ext/app/Books*
+    rm -rf $SYSTEM/system_ext/app/CarHomeGoogle
+    rm -rf $SYSTEM/system_ext/app/CalculatorGoogle*
+    rm -rf $SYSTEM/system_ext/app/CalendarGoogle*
+    rm -rf $SYSTEM/system_ext/app/CarHomeGoogle
+    rm -rf $SYSTEM/system_ext/app/Chrome*
+    rm -rf $SYSTEM/system_ext/app/CloudPrint*
+    rm -rf $SYSTEM/system_ext/app/DevicePersonalizationServices
+    rm -rf $SYSTEM/system_ext/app/DMAgent
+    rm -rf $SYSTEM/system_ext/app/Drive
+    rm -rf $SYSTEM/system_ext/app/Duo
+    rm -rf $SYSTEM/system_ext/app/EditorsDocs
+    rm -rf $SYSTEM/system_ext/app/Editorssheets
+    rm -rf $SYSTEM/system_ext/app/EditorsSlides
+    rm -rf $SYSTEM/system_ext/app/ExchangeServices
+    rm -rf $SYSTEM/system_ext/app/FaceLock
+    rm -rf $SYSTEM/system_ext/app/Fitness*
+    rm -rf $SYSTEM/system_ext/app/GalleryGo*
+    rm -rf $SYSTEM/system_ext/app/Gcam*
+    rm -rf $SYSTEM/system_ext/app/GCam*
+    rm -rf $SYSTEM/system_ext/app/Gmail*
+    rm -rf $SYSTEM/system_ext/app/GoogleCamera*
+    rm -rf $SYSTEM/system_ext/app/GoogleCalendar*
+    rm -rf $SYSTEM/system_ext/app/GoogleCalendarSyncAdapter
+    rm -rf $SYSTEM/system_ext/app/GoogleContactsSyncAdapter
+    rm -rf $SYSTEM/system_ext/app/GoogleCloudPrint
+    rm -rf $SYSTEM/system_ext/app/GoogleEarth
+    rm -rf $SYSTEM/system_ext/app/GoogleExtshared
+    rm -rf $SYSTEM/system_ext/app/GooglePrintRecommendationService
+    rm -rf $SYSTEM/system_ext/app/GoogleGo*
+    rm -rf $SYSTEM/system_ext/app/GoogleHome*
+    rm -rf $SYSTEM/system_ext/app/GoogleHindiIME*
+    rm -rf $SYSTEM/system_ext/app/GoogleKeep*
+    rm -rf $SYSTEM/system_ext/app/GoogleJapaneseInput*
+    rm -rf $SYSTEM/system_ext/app/GoogleLoginService*
+    rm -rf $SYSTEM/system_ext/app/GoogleMusic*
+    rm -rf $SYSTEM/system_ext/app/GoogleNow*
+    rm -rf $SYSTEM/system_ext/app/GooglePhotos*
+    rm -rf $SYSTEM/system_ext/app/GooglePinyinIME*
+    rm -rf $SYSTEM/system_ext/app/GooglePlus
+    rm -rf $SYSTEM/system_ext/app/GoogleTTS*
+    rm -rf $SYSTEM/system_ext/app/GoogleVrCore*
+    rm -rf $SYSTEM/system_ext/app/GoogleZhuyinIME*
+    rm -rf $SYSTEM/system_ext/app/Hangouts
+    rm -rf $SYSTEM/system_ext/app/KoreanIME*
+    rm -rf $SYSTEM/system_ext/app/Maps
+    rm -rf $SYSTEM/system_ext/app/Markup*
+    rm -rf $SYSTEM/system_ext/app/Music2*
+    rm -rf $SYSTEM/system_ext/app/Newsstand
+    rm -rf $SYSTEM/system_ext/app/NexusWallpapers*
+    rm -rf $SYSTEM/system_ext/app/Ornament
+    rm -rf $SYSTEM/system_ext/app/Photos*
+    rm -rf $SYSTEM/system_ext/app/PlayAutoInstallConfig*
+    rm -rf $SYSTEM/system_ext/app/PlayGames*
+    rm -rf $SYSTEM/system_ext/app/PrebuiltExchange3Google
+    rm -rf $SYSTEM/system_ext/app/PrebuiltGmail
+    rm -rf $SYSTEM/system_ext/app/PrebuiltKeep
+    rm -rf $SYSTEM/system_ext/app/Street
+    rm -rf $SYSTEM/system_ext/app/Stickers*
+    rm -rf $SYSTEM/system_ext/app/TalkBack
+    rm -rf $SYSTEM/system_ext/app/talkBack
+    rm -rf $SYSTEM/system_ext/app/talkback
+    rm -rf $SYSTEM/system_ext/app/TranslatePrebuilt
+    rm -rf $SYSTEM/system_ext/app/Tycho
+    rm -rf $SYSTEM/system_ext/app/Videos
+    rm -rf $SYSTEM/system_ext/app/Wallet
+    rm -rf $SYSTEM/system_ext/app/WallpapersBReel*
+    rm -rf $SYSTEM/system_ext/app/YouTube
+    rm -rf $SYSTEM/system_ext/etc/default-permissions/default-permissions.xml
+    rm -rf $SYSTEM/system_ext/etc/default-permissions/opengapps-permissions.xml
+    rm -rf $SYSTEM/system_ext/etc/permissions/default-permissions.xml
+    rm -rf $SYSTEM/system_ext/etc/permissions/privapp-permissions-elgoog.xml
+    rm -rf $SYSTEM/system_ext/etc/permissions/privapp-permissions-google*
+    rm -rf $SYSTEM/system_ext/etc/permissions/com.google.android.camera*
+    rm -rf $SYSTEM/system_ext/etc/permissions/com.google.android.dialer*
+    rm -rf $SYSTEM/system_ext/etc/permissions/com.google.android.maps*
+    rm -rf $SYSTEM/system_ext/etc/permissions/split-permissions-google.xml
+    rm -rf $SYSTEM/system_ext/etc/preferred-apps/google.xml
+    rm -rf $SYSTEM/system_ext/etc/preferred-apps/google_build.xml
+    rm -rf $SYSTEM/system_ext/etc/sysconfig/pixel_2017_exclusive.xml
+    rm -rf $SYSTEM/system_ext/etc/sysconfig/pixel_experience_2017.xml
+    rm -rf $SYSTEM/system_ext/etc/sysconfig/gmsexpress.xml
+    rm -rf $SYSTEM/system_ext/etc/sysconfig/googledialergo-sysconfig.xml
+    rm -rf $SYSTEM/system_ext/etc/sysconfig/google-hiddenapi-package-whitelist.xml
+    rm -rf $SYSTEM/system_ext/etc/sysconfig/google.xml
+    rm -rf $SYSTEM/system_ext/etc/sysconfig/google_build.xml
+    rm -rf $SYSTEM/system_ext/etc/sysconfig/google_experience.xml
+    rm -rf $SYSTEM/system_ext/etc/sysconfig/google_exclusives_enable.xml
+    rm -rf $SYSTEM/system_ext/etc/sysconfig/go_experience.xml
+    rm -rf $SYSTEM/system_ext/etc/sysconfig/nga.xml
+    rm -rf $SYSTEM/system_ext/etc/sysconfig/nexus.xml
+    rm -rf $SYSTEM/system_ext/etc/sysconfig/pixel*
+    rm -rf $SYSTEM/system_ext/etc/sysconfig/turbo.xml
+    rm -rf $SYSTEM/system_ext/etc/sysconfig/wellbeing.xml
+    rm -rf $SYSTEM/system_ext/framework/com.google.android.camera*
+    rm -rf $SYSTEM/system_ext/framework/com.google.android.dialer*
+    rm -rf $SYSTEM/system_ext/framework/com.google.android.maps*
+    rm -rf $SYSTEM/system_ext/framework/oat/arm/com.google.android.camera*
+    rm -rf $SYSTEM/system_ext/framework/oat/arm/com.google.android.dialer*
+    rm -rf $SYSTEM/system_ext/framework/oat/arm/com.google.android.maps*
+    rm -rf $SYSTEM/system_ext/framework/oat/arm64/com.google.android.camera*
+    rm -rf $SYSTEM/system_ext/framework/oat/arm64/com.google.android.dialer*
+    rm -rf $SYSTEM/system_ext/framework/oat/arm64/com.google.android.maps*
+    rm -rf $SYSTEM/system_ext/lib/libaiai-annotators.so
+    rm -rf $SYSTEM/system_ext/lib/libcronet.70.0.3522.0.so
+    rm -rf $SYSTEM/system_ext/lib/libfilterpack_facedetect.so
+    rm -rf $SYSTEM/system_ext/lib/libfrsdk.so
+    rm -rf $SYSTEM/system_ext/lib/libgcam.so
+    rm -rf $SYSTEM/system_ext/lib/libgcam_swig_jni.so
+    rm -rf $SYSTEM/system_ext/lib/libocr.so
+    rm -rf $SYSTEM/system_ext/lib/libparticle-extractor_jni.so
+    rm -rf $SYSTEM/system_ext/lib64/libbarhopper.so
+    rm -rf $SYSTEM/system_ext/lib64/libfacenet.so
+    rm -rf $SYSTEM/system_ext/lib64/libfilterpack_facedetect.so
+    rm -rf $SYSTEM/system_ext/lib64/libfrsdk.so
+    rm -rf $SYSTEM/system_ext/lib64/libgcam.so
+    rm -rf $SYSTEM/system_ext/lib64/libgcam_swig_jni.so
+    rm -rf $SYSTEM/system_ext/lib64/libsketchology_native.so
+    rm -rf $SYSTEM/system_ext/overlay/PixelConfigOverlay*
+    rm -rf $SYSTEM/system_ext/priv-app/Aiai*
+    rm -rf $SYSTEM/system_ext/priv-app/AmbientSense*
+    rm -rf $SYSTEM/system_ext/priv-app/AndroidAuto*
+    rm -rf $SYSTEM/system_ext/priv-app/AndroidMigrate*
+    rm -rf $SYSTEM/system_ext/priv-app/AndroidPlatformServices
+    rm -rf $SYSTEM/system_ext/priv-app/CalendarGoogle*
+    rm -rf $SYSTEM/system_ext/priv-app/CalculatorGoogle*
+    rm -rf $SYSTEM/system_ext/priv-app/Camera*
+    rm -rf $SYSTEM/system_ext/priv-app/CarrierServices
+    rm -rf $SYSTEM/system_ext/priv-app/CarrierSetup
+    rm -rf $SYSTEM/system_ext/priv-app/ConfigUpdater
+    rm -rf $SYSTEM/system_ext/priv-app/DataTransferTool
+    rm -rf $SYSTEM/system_ext/priv-app/DeviceHealthServices
+    rm -rf $SYSTEM/system_ext/priv-app/DevicePersonalizationServices
+    rm -rf $SYSTEM/system_ext/priv-app/DigitalWellbeing*
+    rm -rf $SYSTEM/system_ext/priv-app/FaceLock
+    rm -rf $SYSTEM/system_ext/priv-app/Gcam*
+    rm -rf $SYSTEM/system_ext/priv-app/GCam*
+    rm -rf $SYSTEM/system_ext/priv-app/GCS
+    rm -rf $SYSTEM/system_ext/priv-app/GmsCore*
+    rm -rf $SYSTEM/system_ext/priv-app/GoogleCalculator*
+    rm -rf $SYSTEM/system_ext/priv-app/GoogleCalendar*
+    rm -rf $SYSTEM/system_ext/priv-app/GoogleCamera*
+    rm -rf $SYSTEM/system_ext/priv-app/GoogleBackupTransport
+    rm -rf $SYSTEM/system_ext/priv-app/GoogleExtservices
+    rm -rf $SYSTEM/system_ext/priv-app/GoogleExtServicesPrebuilt
+    rm -rf $SYSTEM/system_ext/priv-app/GoogleFeedback
+    rm -rf $SYSTEM/system_ext/priv-app/GoogleOneTimeInitializer
+    rm -rf $SYSTEM/system_ext/priv-app/GooglePartnerSetup
+    rm -rf $SYSTEM/system_ext/priv-app/GoogleRestore
+    rm -rf $SYSTEM/system_ext/priv-app/GoogleServicesFramework
+    rm -rf $SYSTEM/system_ext/priv-app/HotwordEnrollment*
+    rm -rf $SYSTEM/system_ext/priv-app/HotWordEnrollment*
+    rm -rf $SYSTEM/system_ext/priv-app/matchmaker*
+    rm -rf $SYSTEM/system_ext/priv-app/Matchmaker*
+    rm -rf $SYSTEM/system_ext/priv-app/Phonesky
+    rm -rf $SYSTEM/system_ext/priv-app/PixelLive*
+    rm -rf $SYSTEM/system_ext/priv-app/PrebuiltGmsCore*
+    rm -rf $SYSTEM/system_ext/priv-app/PixelSetupWizard*
+    rm -rf $SYSTEM/system_ext/priv-app/SetupWizard*
+    rm -rf $SYSTEM/system_ext/priv-app/Tag*
+    rm -rf $SYSTEM/system_ext/priv-app/Tips*
+    rm -rf $SYSTEM/system_ext/priv-app/Turbo*
+    rm -rf $SYSTEM/system_ext/priv-app/Velvet
+    rm -rf $SYSTEM/system_ext/priv-app/Wellbeing*
+    rm -rf $SYSTEM/system_ext/usr/srec/en-US
+    rm -rf $SYSTEM/product/app/AndroidAuto*
+    rm -rf $SYSTEM/product/app/arcore
+    rm -rf $SYSTEM/product/app/Books*
+    rm -rf $SYSTEM/product/app/CalculatorGoogle*
+    rm -rf $SYSTEM/product/app/CalendarGoogle*
+    rm -rf $SYSTEM/product/app/CarHomeGoogle
+    rm -rf $SYSTEM/product/app/Chrome*
+    rm -rf $SYSTEM/product/app/CloudPrint*
+    rm -rf $SYSTEM/product/app/DMAgent
+    rm -rf $SYSTEM/product/app/DevicePersonalizationServices
+    rm -rf $SYSTEM/product/app/Drive
+    rm -rf $SYSTEM/product/app/Duo
+    rm -rf $SYSTEM/product/app/EditorsDocs
+    rm -rf $SYSTEM/product/app/Editorssheets
+    rm -rf $SYSTEM/product/app/EditorsSlides
+    rm -rf $SYSTEM/product/app/ExchangeServices
+    rm -rf $SYSTEM/product/app/FaceLock
+    rm -rf $SYSTEM/product/app/Fitness*
+    rm -rf $SYSTEM/product/app/GalleryGo*
+    rm -rf $SYSTEM/product/app/Gcam*
+    rm -rf $SYSTEM/product/app/GCam*
+    rm -rf $SYSTEM/product/app/Gmail*
+    rm -rf $SYSTEM/product/app/GoogleCamera*
+    rm -rf $SYSTEM/product/app/GoogleCalendar*
+    rm -rf $SYSTEM/product/app/GoogleContacts*
+    rm -rf $SYSTEM/product/app/GoogleCloudPrint
+    rm -rf $SYSTEM/product/app/GoogleEarth
+    rm -rf $SYSTEM/product/app/GoogleExtshared
+    rm -rf $SYSTEM/product/app/GoogleExtShared
+    rm -rf $SYSTEM/product/app/GoogleGalleryGo
+    rm -rf $SYSTEM/product/app/GoogleGo*
+    rm -rf $SYSTEM/product/app/GoogleHome*
+    rm -rf $SYSTEM/product/app/GoogleHindiIME*
+    rm -rf $SYSTEM/product/app/GoogleKeep*
+    rm -rf $SYSTEM/product/app/GoogleJapaneseInput*
+    rm -rf $SYSTEM/product/app/GoogleLoginService*
+    rm -rf $SYSTEM/product/app/GoogleMusic*
+    rm -rf $SYSTEM/product/app/GoogleNow*
+    rm -rf $SYSTEM/product/app/GooglePhotos*
+    rm -rf $SYSTEM/product/app/GooglePinyinIME*
+    rm -rf $SYSTEM/product/app/GooglePlus
+    rm -rf $SYSTEM/product/app/GoogleTTS*
+    rm -rf $SYSTEM/product/app/GoogleVrCore*
+    rm -rf $SYSTEM/product/app/GoogleZhuyinIME*
+    rm -rf $SYSTEM/product/app/Hangouts
+    rm -rf $SYSTEM/product/app/KoreanIME*
+    rm -rf $SYSTEM/product/app/LocationHistory*
+    rm -rf $SYSTEM/product/app/Maps
+    rm -rf $SYSTEM/product/app/Markup*
+    rm -rf $SYSTEM/product/app/MicropaperPrebuilt
+    rm -rf $SYSTEM/product/app/Music2*
+    rm -rf $SYSTEM/product/app/Newsstand
+    rm -rf $SYSTEM/product/app/NexusWallpapers*
+    rm -rf $SYSTEM/product/app/Ornament
+    rm -rf $SYSTEM/product/app/Photos*
+    rm -rf $SYSTEM/product/app/PlayAutoInstallConfig*
+    rm -rf $SYSTEM/product/app/PlayGames*
+    rm -rf $SYSTEM/product/app/PrebuiltBugle
+    rm -rf $SYSTEM/product/app/PrebuiltClockGoogle
+    rm -rf $SYSTEM/product/app/PrebuiltDeskClockGoogle
+    rm -rf $SYSTEM/product/app/PrebuiltExchange3Google
+    rm -rf $SYSTEM/product/app/PrebuiltGmail
+    rm -rf $SYSTEM/product/app/PrebuiltKeep
+    rm -rf $SYSTEM/product/app/SoundAmplifierPrebuilt
+    rm -rf $SYSTEM/product/app/Street
+    rm -rf $SYSTEM/product/app/Stickers*
+    rm -rf $SYSTEM/product/app/TalkBack
+    rm -rf $SYSTEM/product/app/talkBack
+    rm -rf $SYSTEM/product/app/talkback
+    rm -rf $SYSTEM/product/app/TranslatePrebuilt
+    rm -rf $SYSTEM/product/app/Tycho
+    rm -rf $SYSTEM/product/app/Videos
+    rm -rf $SYSTEM/product/app/Wallet
+    rm -rf $SYSTEM/product/app/WallpapersBReel*
+    rm -rf $SYSTEM/product/app/YouTube*
+    rm -rf $SYSTEM/product/etc/default-permissions/default-permissions.xml
+    rm -rf $SYSTEM/product/etc/default-permissions/opengapps-permissions.xml
+    rm -rf $SYSTEM/product/etc/permissions/default-permissions.xml
+    rm -rf $SYSTEM/product/etc/permissions/privapp-permissions-elgoog.xml
+    rm -rf $SYSTEM/product/etc/permissions/privapp-permissions-google*
+    rm -rf $SYSTEM/product/etc/permissions/com.google.android.camera*
+    rm -rf $SYSTEM/product/etc/permissions/com.google.android.dialer*
+    rm -rf $SYSTEM/product/etc/permissions/com.google.android.maps*
+    rm -rf $SYSTEM/product/etc/permissions/split-permissions-google.xml
+    rm -rf $SYSTEM/product/etc/preferred-apps/google.xml
+    rm -rf $SYSTEM/product/etc/preferred-apps/google_build.xml
+    rm -rf $SYSTEM/product/etc/sysconfig/pixel_2017_exclusive.xml
+    rm -rf $SYSTEM/product/etc/sysconfig/pixel_experience_2017.xml
+    rm -rf $SYSTEM/product/etc/sysconfig/gmsexpress.xml
+    rm -rf $SYSTEM/product/etc/sysconfig/googledialergo-sysconfig.xml
+    rm -rf $SYSTEM/product/etc/sysconfig/google-hiddenapi-package-whitelist.xml
+    rm -rf $SYSTEM/product/etc/sysconfig/google.xml
+    rm -rf $SYSTEM/product/etc/sysconfig/google_build.xml
+    rm -rf $SYSTEM/product/etc/sysconfig/google_experience.xml
+    rm -rf $SYSTEM/product/etc/sysconfig/google_exclusives_enable.xml
+    rm -rf $SYSTEM/product/etc/sysconfig/go_experience.xml
+    rm -rf $SYSTEM/product/etc/sysconfig/nexus.xml
+    rm -rf $SYSTEM/product/etc/sysconfig/nga.xml
+    rm -rf $SYSTEM/product/etc/sysconfig/pixel*
+    rm -rf $SYSTEM/product/etc/sysconfig/turbo.xml
+    rm -rf $SYSTEM/product/etc/sysconfig/wellbeing.xml
+    rm -rf $SYSTEM/product/framework/com.google.android.camera*
+    rm -rf $SYSTEM/product/framework/com.google.android.dialer*
+    rm -rf $SYSTEM/product/framework/com.google.android.maps*
+    rm -rf $SYSTEM/product/framework/oat/arm/com.google.android.camera*
+    rm -rf $SYSTEM/product/framework/oat/arm/com.google.android.dialer*
+    rm -rf $SYSTEM/product/framework/oat/arm/com.google.android.maps*
+    rm -rf $SYSTEM/product/framework/oat/arm64/com.google.android.camera*
+    rm -rf $SYSTEM/product/framework/oat/arm64/com.google.android.dialer*
+    rm -rf $SYSTEM/product/framework/oat/arm64/com.google.android.maps*
+    rm -rf $SYSTEM/product/lib/libaiai-annotators.so
+    rm -rf $SYSTEM/product/lib/libcronet.70.0.3522.0.so
+    rm -rf $SYSTEM/product/lib/libfilterpack_facedetect.so
+    rm -rf $SYSTEM/product/lib/libfrsdk.so
+    rm -rf $SYSTEM/product/lib/libgcam.so
+    rm -rf $SYSTEM/product/lib/libgcam_swig_jni.so
+    rm -rf $SYSTEM/product/lib/libocr.so
+    rm -rf $SYSTEM/product/lib/libparticle-extractor_jni.so
+    rm -rf $SYSTEM/product/lib64/libbarhopper.so
+    rm -rf $SYSTEM/product/lib64/libfacenet.so
+    rm -rf $SYSTEM/product/lib64/libfilterpack_facedetect.so
+    rm -rf $SYSTEM/product/lib64/libfrsdk.so
+    rm -rf $SYSTEM/product/lib64/libgcam.so
+    rm -rf $SYSTEM/product/lib64/libgcam_swig_jni.so
+    rm -rf $SYSTEM/product/lib64/libsketchology_native.so
+    rm -rf $SYSTEM/product/overlay/GoogleConfigOverlay*
+    rm -rf $SYSTEM/product/overlay/PixelConfigOverlay*
+    rm -rf $SYSTEM/product/overlay/Gms*
+    rm -rf $SYSTEM/product/priv-app/Aiai*
+    rm -rf $SYSTEM/product/priv-app/AmbientSense*
+    rm -rf $SYSTEM/product/priv-app/AndroidAuto*
+    rm -rf $SYSTEM/product/priv-app/AndroidMigrate*
+    rm -rf $SYSTEM/product/priv-app/AndroidPlatformServices
+    rm -rf $SYSTEM/product/priv-app/CalendarGoogle*
+    rm -rf $SYSTEM/product/priv-app/CalculatorGoogle*
+    rm -rf $SYSTEM/product/priv-app/Camera*
+    rm -rf $SYSTEM/product/priv-app/CarrierServices
+    rm -rf $SYSTEM/product/priv-app/CarrierSetup
+    rm -rf $SYSTEM/product/priv-app/ConfigUpdater
+    rm -rf $SYSTEM/product/priv-app/ConnMetrics
+    rm -rf $SYSTEM/product/priv-app/DataTransferTool
+    rm -rf $SYSTEM/product/priv-app/DeviceHealthServices
+    rm -rf $SYSTEM/product/priv-app/DevicePersonalizationServices
+    rm -rf $SYSTEM/product/priv-app/DigitalWellbeing*
+    rm -rf $SYSTEM/product/priv-app/FaceLock
+    rm -rf $SYSTEM/product/priv-app/Gcam*
+    rm -rf $SYSTEM/product/priv-app/GCam*
+    rm -rf $SYSTEM/product/priv-app/GCS
+    rm -rf $SYSTEM/product/priv-app/GmsCore*
+    rm -rf $SYSTEM/product/priv-app/GoogleBackupTransport
+    rm -rf $SYSTEM/product/priv-app/GoogleCalculator*
+    rm -rf $SYSTEM/product/priv-app/GoogleCalendar*
+    rm -rf $SYSTEM/product/priv-app/GoogleCamera*
+    rm -rf $SYSTEM/product/priv-app/GoogleContacts*
+    rm -rf $SYSTEM/product/priv-app/GoogleDialer
+    rm -rf $SYSTEM/product/priv-app/GoogleExtservices
+    rm -rf $SYSTEM/product/priv-app/GoogleExtServices
+    rm -rf $SYSTEM/product/priv-app/GoogleFeedback
+    rm -rf $SYSTEM/product/priv-app/GoogleOneTimeInitializer
+    rm -rf $SYSTEM/product/priv-app/GooglePartnerSetup
+    rm -rf $SYSTEM/product/priv-app/GoogleRestore
+    rm -rf $SYSTEM/product/priv-app/GoogleServicesFramework
+    rm -rf $SYSTEM/product/priv-app/HotwordEnrollment*
+    rm -rf $SYSTEM/product/priv-app/HotWordEnrollment*
+    rm -rf $SYSTEM/product/priv-app/MaestroPrebuilt
+    rm -rf $SYSTEM/product/priv-app/matchmaker*
+    rm -rf $SYSTEM/product/priv-app/Matchmaker*
+    rm -rf $SYSTEM/product/priv-app/Phonesky
+    rm -rf $SYSTEM/product/priv-app/PixelLive*
+    rm -rf $SYSTEM/product/priv-app/PrebuiltGmsCore*
+    rm -rf $SYSTEM/product/priv-app/PixelSetupWizard*
+    rm -rf $SYSTEM/product/priv-app/RecorderPrebuilt
+    rm -rf $SYSTEM/product/priv-app/SCONE
+    rm -rf $SYSTEM/product/priv-app/Scribe*
+    rm -rf $SYSTEM/product/priv-app/SetupWizard*
+    rm -rf $SYSTEM/product/priv-app/Tag*
+    rm -rf $SYSTEM/product/priv-app/Tips*
+    rm -rf $SYSTEM/product/priv-app/Turbo*
+    rm -rf $SYSTEM/product/priv-app/Velvet
+    rm -rf $SYSTEM/product/priv-app/WallpaperPickerGoogleRelease
+    rm -rf $SYSTEM/product/priv-app/Wellbeing*
+    rm -rf $SYSTEM/product/usr/srec/en-US
+    rm -rf $SYSTEM/app/Abstruct
+    rm -rf $SYSTEM/app/BasicDreams
+    rm -rf $SYSTEM/app/BlissPapers
+    rm -rf $SYSTEM/app/BookmarkProvider
+    rm -rf $SYSTEM/app/Browser*
+    rm -rf $SYSTEM/app/Camera*
+    rm -rf $SYSTEM/app/Chromium
+    rm -rf $SYSTEM/app/ColtPapers
+    rm -rf $SYSTEM/app/EasterEgg*
+    rm -rf $SYSTEM/app/EggGame
+    rm -rf $SYSTEM/app/Email*
+    rm -rf $SYSTEM/app/ExactCalculator
+    rm -rf $SYSTEM/app/Exchange2
+    rm -rf $SYSTEM/app/Gallery*
+    rm -rf $SYSTEM/app/GugelClock
+    rm -rf $SYSTEM/app/HTMLViewer
+    rm -rf $SYSTEM/app/Jelly
+    rm -rf $SYSTEM/app/messaging
+    rm -rf $SYSTEM/app/MiXplorer*
+    rm -rf $SYSTEM/app/Music*
+    rm -rf $SYSTEM/app/Partnerbookmark*
+    rm -rf $SYSTEM/app/PartnerBookmark*
+    rm -rf $SYSTEM/app/Phonograph
+    rm -rf $SYSTEM/app/PhotoTable
+    rm -rf $SYSTEM/app/RetroMusic*
+    rm -rf $SYSTEM/app/VanillaMusic
+    rm -rf $SYSTEM/app/Via*
+    rm -rf $SYSTEM/app/QPGallery
+    rm -rf $SYSTEM/app/QuickSearchBox
+    rm -rf $SYSTEM/priv-app/AudioFX
+    rm -rf $SYSTEM/priv-app/Camera*
+    rm -rf $SYSTEM/priv-app/Eleven
+    rm -rf $SYSTEM/priv-app/MatLog
+    rm -rf $SYSTEM/priv-app/MusicFX
+    rm -rf $SYSTEM/priv-app/OmniSwitch
+    rm -rf $SYSTEM/priv-app/Snap*
+    rm -rf $SYSTEM/priv-app/Tag*
+    rm -rf $SYSTEM/priv-app/Via*
+    rm -rf $SYSTEM/priv-app/VinylMusicPlayer
+    rm -rf $SYSTEM/system_ext/app/Abstruct
+    rm -rf $SYSTEM/system_ext/app/BasicDreams
+    rm -rf $SYSTEM/system_ext/app/BlissPapers
+    rm -rf $SYSTEM/system_ext/app/BookmarkProvider
+    rm -rf $SYSTEM/system_ext/app/Browser*
+    rm -rf $SYSTEM/system_ext/app/Camera*
+    rm -rf $SYSTEM/system_ext/app/Chromium
+    rm -rf $SYSTEM/system_ext/app/ColtPapers
+    rm -rf $SYSTEM/system_ext/app/EasterEgg*
+    rm -rf $SYSTEM/system_ext/app/EggGame
+    rm -rf $SYSTEM/system_ext/app/Email*
+    rm -rf $SYSTEM/system_ext/app/ExactCalculator
+    rm -rf $SYSTEM/system_ext/app/Exchange2
+    rm -rf $SYSTEM/system_ext/app/Gallery*
+    rm -rf $SYSTEM/system_ext/app/GugelClock
+    rm -rf $SYSTEM/system_ext/app/HTMLViewer
+    rm -rf $SYSTEM/system_ext/app/Jelly
+    rm -rf $SYSTEM/system_ext/app/messaging
+    rm -rf $SYSTEM/system_ext/app/MiXplorer*
+    rm -rf $SYSTEM/system_ext/app/Music*
+    rm -rf $SYSTEM/system_ext/app/Partnerbookmark*
+    rm -rf $SYSTEM/system_ext/app/PartnerBookmark*
+    rm -rf $SYSTEM/system_ext/app/Phonograph
+    rm -rf $SYSTEM/system_ext/app/PhotoTable
+    rm -rf $SYSTEM/system_ext/app/RetroMusic*
+    rm -rf $SYSTEM/system_ext/app/VanillaMusic
+    rm -rf $SYSTEM/system_ext/app/Via*
+    rm -rf $SYSTEM/system_ext/app/QPGallery
+    rm -rf $SYSTEM/system_ext/app/QuickSearchBox
+    rm -rf $SYSTEM/system_ext/priv-app/AudioFX
+    rm -rf $SYSTEM/system_ext/priv-app/Camera*
+    rm -rf $SYSTEM/system_ext/priv-app/Eleven
+    rm -rf $SYSTEM/system_ext/priv-app/MatLog
+    rm -rf $SYSTEM/system_ext/priv-app/MusicFX
+    rm -rf $SYSTEM/system_ext/priv-app/OmniSwitch
+    rm -rf $SYSTEM/system_ext/priv-app/Snap*
+    rm -rf $SYSTEM/system_ext/priv-app/Tag*
+    rm -rf $SYSTEM/system_ext/priv-app/Via*
+    rm -rf $SYSTEM/system_ext/priv-app/VinylMusicPlayer
+    rm -rf $SYSTEM/product/app/AboutBliss
+    rm -rf $SYSTEM/product/app/BasicDreams
+    rm -rf $SYSTEM/product/app/BlissStatistics
+    rm -rf $SYSTEM/product/app/BookmarkProvider
+    rm -rf $SYSTEM/product/app/Browser*
+    rm -rf $SYSTEM/product/app/Calendar*
+    rm -rf $SYSTEM/product/app/Camera*
+    rm -rf $SYSTEM/product/app/Dashboard
+    rm -rf $SYSTEM/product/app/DeskClock
+    rm -rf $SYSTEM/product/app/EasterEgg*
+    rm -rf $SYSTEM/product/app/Email*
+    rm -rf $SYSTEM/product/app/EmergencyInfo
+    rm -rf $SYSTEM/product/app/Etar
+    rm -rf $SYSTEM/product/app/Gallery*
+    rm -rf $SYSTEM/product/app/HTMLViewer
+    rm -rf $SYSTEM/product/app/Jelly
+    rm -rf $SYSTEM/product/app/Messaging
+    rm -rf $SYSTEM/product/app/messaging
+    rm -rf $SYSTEM/product/app/Music*
+    rm -rf $SYSTEM/product/app/Partnerbookmark*
+    rm -rf $SYSTEM/product/app/PartnerBookmark*
+    rm -rf $SYSTEM/product/app/PhotoTable*
+    rm -rf $SYSTEM/product/app/Recorder*
+    rm -rf $SYSTEM/product/app/RetroMusic*
+    rm -rf $SYSTEM/product/app/SimpleGallery
+    rm -rf $SYSTEM/product/app/Via*
+    rm -rf $SYSTEM/product/app/WallpaperZone
+    rm -rf $SYSTEM/product/app/QPGallery
+    rm -rf $SYSTEM/product/app/QuickSearchBox
+    rm -rf $SYSTEM/product/overlay/ChromeOverlay
+    rm -rf $SYSTEM/product/overlay/TelegramOverlay
+    rm -rf $SYSTEM/product/overlay/WhatsAppOverlay
+    rm -rf $SYSTEM/product/priv-app/AncientWallpaperZone
+    rm -rf $SYSTEM/product/priv-app/Camera*
+    rm -rf $SYSTEM/product/priv-app/Contacts
+    rm -rf $SYSTEM/product/priv-app/crDroidMusic
+    rm -rf $SYSTEM/product/priv-app/Dialer
+    rm -rf $SYSTEM/product/priv-app/Eleven
+    rm -rf $SYSTEM/product/priv-app/EmergencyInfo
+    rm -rf $SYSTEM/product/priv-app/Gallery2
+    rm -rf $SYSTEM/product/priv-app/MatLog
+    rm -rf $SYSTEM/product/priv-app/MusicFX
+    rm -rf $SYSTEM/product/priv-app/OmniSwitch
+    rm -rf $SYSTEM/product/priv-app/Recorder*
+    rm -rf $SYSTEM/product/priv-app/Snap*
+    rm -rf $SYSTEM/product/priv-app/Tag*
+    rm -rf $SYSTEM/product/priv-app/Via*
+    rm -rf $SYSTEM/product/priv-app/VinylMusicPlayer
+    rm -rf $SYSTEM/app/AppleNLP*
+    rm -rf $SYSTEM/app/AuroraDroid
+    rm -rf $SYSTEM/app/AuroraStore
+    rm -rf $SYSTEM/app/DejaVu*
+    rm -rf $SYSTEM/app/DroidGuard
+    rm -rf $SYSTEM/app/LocalGSM*
+    rm -rf $SYSTEM/app/LocalWiFi*
+    rm -rf $SYSTEM/app/MicroG*
+    rm -rf $SYSTEM/app/MozillaUnified*
+    rm -rf $SYSTEM/app/nlp*
+    rm -rf $SYSTEM/app/Nominatim*
+    rm -rf $SYSTEM/system_ext/app/AppleNLP*
+    rm -rf $SYSTEM/system_ext/app/AuroraDroid
+    rm -rf $SYSTEM/system_ext/app/AuroraStore
+    rm -rf $SYSTEM/system_ext/app/DejaVu*
+    rm -rf $SYSTEM/system_ext/app/DroidGuard
+    rm -rf $SYSTEM/system_ext/app/LocalGSM*
+    rm -rf $SYSTEM/system_ext/app/LocalWiFi*
+    rm -rf $SYSTEM/system_ext/app/MicroG*
+    rm -rf $SYSTEM/system_ext/app/MozillaUnified*
+    rm -rf $SYSTEM/system_ext/app/nlp*
+    rm -rf $SYSTEM/system_ext/app/Nominatim*
+    rm -rf $SYSTEM/product/app/AppleNLP*
+    rm -rf $SYSTEM/product/app/AuroraDroid
+    rm -rf $SYSTEM/product/app/AuroraStore
+    rm -rf $SYSTEM/product/app/DejaVu*
+    rm -rf $SYSTEM/product/app/DroidGuard
+    rm -rf $SYSTEM/product/app/LocalGSM*
+    rm -rf $SYSTEM/product/app/LocalWiFi*
+    rm -rf $SYSTEM/product/app/MicroG*
+    rm -rf $SYSTEM/product/app/MozillaUnified*
+    rm -rf $SYSTEM/product/app/nlp*
+    rm -rf $SYSTEM/product/app/Nominatim*
+    rm -rf $SYSTEM/priv-app/AuroraServices
+    rm -rf $SYSTEM/priv-app/FakeStore
+    rm -rf $SYSTEM/priv-app/GmsCore
+    rm -rf $SYSTEM/priv-app/GsfProxy
+    rm -rf $SYSTEM/priv-app/MicroG*
+    rm -rf $SYSTEM/priv-app/PatchPhonesky
+    rm -rf $SYSTEM/priv-app/Phonesky
+    rm -rf $SYSTEM/system_ext/priv-app/AuroraServices
+    rm -rf $SYSTEM/system_ext/priv-app/FakeStore
+    rm -rf $SYSTEM/system_ext/priv-app/GmsCore
+    rm -rf $SYSTEM/system_ext/priv-app/GsfProxy
+    rm -rf $SYSTEM/system_ext/priv-app/MicroG*
+    rm -rf $SYSTEM/system_ext/priv-app/PatchPhonesky
+    rm -rf $SYSTEM/system_ext/priv-app/Phonesky
+    rm -rf $SYSTEM/product/priv-app/AuroraServices
+    rm -rf $SYSTEM/product/priv-app/FakeStore
+    rm -rf $SYSTEM/product/priv-app/GmsCore
+    rm -rf $SYSTEM/product/priv-app/GsfProxy
+    rm -rf $SYSTEM/product/priv-app/MicroG*
+    rm -rf $SYSTEM/product/priv-app/PatchPhonesky
+    rm -rf $SYSTEM/product/priv-app/Phonesky
+    rm -rf $SYSTEM/etc/default-permissions/microg*
+    rm -rf $SYSTEM/etc/default-permissions/phonesky*
+    rm -rf $SYSTEM/etc/permissions/features.xml
+    rm -rf $SYSTEM/etc/permissions/com.android.vending*
+    rm -rf $SYSTEM/etc/permissions/com.aurora.services*
+    rm -rf $SYSTEM/etc/permissions/com.google.android.backup*
+    rm -rf $SYSTEM/etc/permissions/com.google.android.gms*
+    rm -rf $SYSTEM/etc/sysconfig/microg*
+    rm -rf $SYSTEM/etc/sysconfig/nogoolag*
+    rm -rf $SYSTEM/system_ext/etc/default-permissions/microg*
+    rm -rf $SYSTEM/system_ext/etc/default-permissions/phonesky*
+    rm -rf $SYSTEM/system_ext/etc/permissions/features.xml
+    rm -rf $SYSTEM/system_ext/etc/permissions/com.android.vending*
+    rm -rf $SYSTEM/system_ext/etc/permissions/com.aurora.services*
+    rm -rf $SYSTEM/system_ext/etc/permissions/com.google.android.backup*
+    rm -rf $SYSTEM/system_ext/etc/permissions/com.google.android.gms*
+    rm -rf $SYSTEM/system_ext/etc/sysconfig/microg*
+    rm -rf $SYSTEM/system_ext/etc/sysconfig/nogoolag*
+    rm -rf $SYSTEM/product/etc/default-permissions/microg*
+    rm -rf $SYSTEM/product/etc/default-permissions/phonesky*
+    rm -rf $SYSTEM/product/etc/permissions/features.xml
+    rm -rf $SYSTEM/product/etc/permissions/com.android.vending*
+    rm -rf $SYSTEM/product/etc/permissions/com.aurora.services*
+    rm -rf $SYSTEM/product/etc/permissions/com.google.android.backup*
+    rm -rf $SYSTEM/product/etc/permissions/com.google.android.gms*
+    rm -rf $SYSTEM/product/etc/sysconfig/microg*
+    rm -rf $SYSTEM/product/etc/sysconfig/nogoolag*
+    rm -rf $SYSTEM/bin/nanodroid*
+    rm -rf $SYSTEM/bin/novl
+    rm -rf $SYSTEM/bin/npem
+    rm -rf $SYSTEM/bin/nprp
+    rm -rf $SYSTEM/bin/nutl
+    rm -rf $SYSTEM/xbin/nanodroid*
+    rm -rf $SYSTEM/xbin/novl
+    rm -rf $SYSTEM/xbin/npem
+    rm -rf $SYSTEM/xbin/nprp
+    rm -rf $SYSTEM/xbin/nutl
+  fi;
+}
+
 # Limit AOSP app installation to SDK30, SDK29 and SDK28
 lim_aosp_install() {
-  if [ "$android_sdk" == "$supported_sdk_v30" ] || [ "$android_sdk" == "$supported_sdk_v29" ] || [ "$android_sdk" == "$supported_sdk_v28" ]; then
+  if [ "$android_sdk" == "$supported_sdk_v30" ]; then
+    pre_installed_ext;
+  fi;
+  if [ "$android_sdk" == "$supported_sdk_v29" ] || [ "$android_sdk" == "$supported_sdk_v28" ]; then
     pre_installed;
   fi;
 }
@@ -1625,14 +2482,18 @@ pre_installed_v30() {
       rm -rf $SYSTEM_ADDOND/90bit_gapps.sh
       rm -rf $SYSTEM/etc/g.prop
     }
+    # Delete pre-installed APKs from system_ext
+    zip_pkg;
+    # Temporary set product pathmap
+    ext_product;
     # Delete pre-installed APKs from product
     zip_pkg;
     # Temporary set system pathmap
-    tmp_pathmap;
+    ext_tmp;
     # Delete pre-installed APKs from system
     zip_pkg;
-    # Set product pathmap for installation
-    product_pathmap;
+    # Set system_ext pathmap for installation
+    ext_pathmap;
   fi;
 }
 
@@ -1816,6 +2677,19 @@ set_sparse() {
     for dir in $dir_list; do
         chmod 0755 "$SYSTEM_APP/${dir}";
     done
+    # Android shared library
+    ext_shared() {
+      file_list="$(find "$TMP_SYS_JAR/" -mindepth 1 -type f | cut -d/ -f5-)"
+      dir_list="$(find "$TMP_SYS_JAR/" -mindepth 1 -type d | cut -d/ -f5-)"
+      for file in $file_list; do
+          install -D "$TMP_SYS_JAR/${file}" "$SYSTEM_APP_SHARED/${file}"
+          chmod 0644 "$SYSTEM_APP_SHARED/${file}";
+      done
+      for dir in $dir_list; do
+          chmod 0755 "$SYSTEM_APP_SHARED/${dir}";
+      done
+    }
+    ext_shared;
     # Add AOSP apps installation for ROMs shipped with GApps
     if [ "$AOSP_PKG_INSTALL" == "true" ]; then
       file_list="$(find "$TMP_SYS_AOSP/" -mindepth 1 -type f | cut -d/ -f5-)"
@@ -1840,6 +2714,19 @@ set_sparse() {
     for dir in $dir_list; do
         chmod 0755 "$SYSTEM_PRIV_APP/${dir}";
     done
+    # Android shared library
+    ext_services() {
+      file_list="$(find "$TMP_PRIV_JAR/" -mindepth 1 -type f | cut -d/ -f5-)"
+      dir_list="$(find "$TMP_PRIV_JAR/" -mindepth 1 -type d | cut -d/ -f5-)"
+      for file in $file_list; do
+          install -D "$TMP_PRIV_JAR/${file}" "$SYSTEM_PRIV_APP_SHARED/${file}"
+          chmod 0644 "$SYSTEM_PRIV_APP_SHARED/${file}";
+      done
+      for dir in $dir_list; do
+          chmod 0755 "$SYSTEM_PRIV_APP_SHARED/${dir}";
+      done
+    }
+    ext_services;
     # Add AOSP apps installation for ROMs shipped with GApps
     if [ "$AOSP_PKG_INSTALL" == "true" ]; then
       file_list="$(find "$TMP_PRIV_AOSP/" -mindepth 1 -type f | cut -d/ -f5-)"
@@ -2057,7 +2944,7 @@ sdk_v30_install() {
       tar tvf $ZIP_FILE/sys/sys_app_GoogleExtShared.tar.xz >> $LOG;
       tar -xf $ZIP_FILE/sys/sys_app_GoogleCalendarSyncAdapter.tar.xz -C $TMP_SYS;
       tar -xf $ZIP_FILE/sys/sys_app_GoogleContactsSyncAdapter.tar.xz -C $TMP_SYS;
-      tar -xf $ZIP_FILE/sys/sys_app_GoogleExtShared.tar.xz -C $TMP_SYS;
+      tar -xf $ZIP_FILE/sys/sys_app_GoogleExtShared.tar.xz -C $TMP_SYS_JAR;
       if [ "$AOSP_PKG_INSTALL" == "true" ]; then
         tar tvf $ZIP_FILE/sys/aosp/sys_app_Messaging.tar.xz >> $LOG;
         tar -xf $ZIP_FILE/sys/aosp/sys_app_Messaging.tar.xz -C $TMP_SYS_AOSP;
@@ -2071,7 +2958,7 @@ sdk_v30_install() {
       tar tvf $ZIP_FILE/core/priv_app_Phonesky.tar.xz >> $LOG;
       tar tvf $ZIP_FILE/core/priv_app_PrebuiltGmsCoreRt.tar.xz >> $LOG;
       tar -xf $ZIP_FILE/core/priv_app_ConfigUpdater.tar.xz -C $TMP_PRIV;
-      tar -xf $ZIP_FILE/core/priv_app_GoogleExtServices.tar.xz -C $TMP_PRIV;
+      tar -xf $ZIP_FILE/core/priv_app_GoogleExtServices.tar.xz -C $TMP_PRIV_JAR;
       tar -xf $ZIP_FILE/core/priv_app_GoogleServicesFramework.tar.xz -C $TMP_PRIV;
       tar -xf $ZIP_FILE/core/priv_app_Phonesky.tar.xz -C $TMP_PRIV;
       tar -xf $ZIP_FILE/core/priv_app_PrebuiltGmsCoreRt.tar.xz -C $TMP_PRIV;
@@ -2123,10 +3010,10 @@ sdk_v30_install() {
     selinux_context_s1() {
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleCalendarSyncAdapter";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleContactsSyncAdapter";
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleExtShared";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_APP_SHARED/GoogleExtShared";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleCalendarSyncAdapter/GoogleCalendarSyncAdapter.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleContactsSyncAdapter/GoogleContactsSyncAdapter.apk";
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleExtShared/GoogleExtShared.apk";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_APP_SHARED/GoogleExtShared/GoogleExtShared.apk";
       if [ "$AOSP_PKG_INSTALL" == "true" ]; then
         chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/Messaging";
         chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/Messaging/Messaging.apk";
@@ -2135,12 +3022,12 @@ sdk_v30_install() {
 
     selinux_context_sp2() {
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/ConfigUpdater";
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/GoogleExtServices";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP_SHARED/GoogleExtServices";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/GoogleServicesFramework";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Phonesky";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/PrebuiltGmsCoreRt";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/ConfigUpdater/ConfigUpdater.apk";
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/GoogleExtServices/GoogleExtServices.apk";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP_SHARED/GoogleExtServices/GoogleExtServices.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Phonesky/Phonesky.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/PrebuiltGmsCoreRt/PrebuiltGmsCoreRt.apk";
@@ -2205,9 +3092,9 @@ sdk_v30_install() {
     apk_opt() {
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_APP/GoogleCalendarSyncAdapter/GoogleCalendarSyncAdapter.apk $ZIPALIGN_OUTFILE/GoogleCalendarSyncAdapter.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_APP/GoogleContactsSyncAdapter/GoogleContactsSyncAdapter.apk $ZIPALIGN_OUTFILE/GoogleContactsSyncAdapter.apk >> $ZIPALIGN_LOG;
-      $ZIPALIGN_TOOL -p -v 4 $SYSTEM_APP/GoogleExtShared/GoogleExtShared.apk $ZIPALIGN_OUTFILE/GoogleExtShared.apk >> $ZIPALIGN_LOG;
+      $ZIPALIGN_TOOL -p -v 4 $SYSTEM_APP_SHARED/GoogleExtShared/GoogleExtShared.apk $ZIPALIGN_OUTFILE/GoogleExtShared.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/ConfigUpdater/ConfigUpdater.apk $ZIPALIGN_OUTFILE/ConfigUpdater.apk >> $ZIPALIGN_LOG;
-      $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/GoogleExtServices/GoogleExtServices.apk $ZIPALIGN_OUTFILE/GoogleExtServices.apk >> $ZIPALIGN_LOG;
+      $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP_SHARED/GoogleExtServices/GoogleExtServices.apk $ZIPALIGN_OUTFILE/GoogleExtServices.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk $ZIPALIGN_OUTFILE/GoogleServicesFramework.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk $ZIPALIGN_OUTFILE/Phonesky.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/PrebuiltGmsCoreRt/PrebuiltGmsCoreRt.apk $ZIPALIGN_OUTFILE/PrebuiltGmsCoreRt.apk >> $ZIPALIGN_LOG;
@@ -2223,9 +3110,9 @@ sdk_v30_install() {
     pre_opt() {
       rm -rf $SYSTEM_APP/GoogleCalendarSyncAdapter/GoogleCalendarSyncAdapter.apk
       rm -rf $SYSTEM_APP/GoogleContactsSyncAdapter/GoogleContactsSyncAdapter.apk
-      rm -rf $SYSTEM_APP/GoogleExtShared/GoogleExtShared.apk
+      rm -rf $SYSTEM_APP_SHARED/GoogleExtShared/GoogleExtShared.apk
       rm -rf $SYSTEM_PRIV_APP/ConfigUpdater/ConfigUpdater.apk
-      rm -rf $SYSTEM_PRIV_APP/GoogleExtServices/GoogleExtServices.apk
+      rm -rf $SYSTEM_PRIV_APP_SHARED/GoogleExtServices/GoogleExtServices.apk
       rm -rf $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk
       rm -rf $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk
       rm -rf $SYSTEM_PRIV_APP/PrebuiltGmsCoreRt/PrebuiltGmsCoreRt.apk
@@ -2241,9 +3128,9 @@ sdk_v30_install() {
     add_opt() {
       cp -f $ZIPALIGN_OUTFILE/GoogleCalendarSyncAdapter.apk $SYSTEM_APP/GoogleCalendarSyncAdapter/GoogleCalendarSyncAdapter.apk
       cp -f $ZIPALIGN_OUTFILE/GoogleContactsSyncAdapter.apk $SYSTEM_APP/GoogleContactsSyncAdapter/GoogleContactsSyncAdapter.apk
-      cp -f $ZIPALIGN_OUTFILE/GoogleExtShared.apk $SYSTEM_APP/GoogleExtShared/GoogleExtShared.apk
+      cp -f $ZIPALIGN_OUTFILE/GoogleExtShared.apk $SYSTEM_APP_SHARED/GoogleExtShared/GoogleExtShared.apk
       cp -f $ZIPALIGN_OUTFILE/ConfigUpdater.apk $SYSTEM_PRIV_APP/ConfigUpdater/ConfigUpdater.apk
-      cp -f $ZIPALIGN_OUTFILE/GoogleExtServices.apk $SYSTEM_PRIV_APP/GoogleExtServices/GoogleExtServices.apk
+      cp -f $ZIPALIGN_OUTFILE/GoogleExtServices.apk $SYSTEM_PRIV_APP_SHARED/GoogleExtServices/GoogleExtServices.apk
       cp -f $ZIPALIGN_OUTFILE/GoogleServicesFramework.apk $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk
       cp -f $ZIPALIGN_OUTFILE/Phonesky.apk $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk
       cp -f $ZIPALIGN_OUTFILE/PrebuiltGmsCoreRt.apk $SYSTEM_PRIV_APP/PrebuiltGmsCoreRt/PrebuiltGmsCoreRt.apk
@@ -2259,9 +3146,9 @@ sdk_v30_install() {
     perm_opt() {
       chmod 0644 $SYSTEM_APP/GoogleCalendarSyncAdapter/GoogleCalendarSyncAdapter.apk
       chmod 0644 $SYSTEM_APP/GoogleContactsSyncAdapter/GoogleContactsSyncAdapter.apk
-      chmod 0644 $SYSTEM_APP/GoogleExtShared/GoogleExtShared.apk
+      chmod 0644 $SYSTEM_APP_SHARED/GoogleExtShared/GoogleExtShared.apk
       chmod 0644 $SYSTEM_PRIV_APP/ConfigUpdater/ConfigUpdater.apk
-      chmod 0644 $SYSTEM_PRIV_APP/GoogleExtServices/GoogleExtServices.apk
+      chmod 0644 $SYSTEM_PRIV_APP_SHARED/GoogleExtServices/GoogleExtServices.apk
       chmod 0644 $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk
       chmod 0644 $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk
       chmod 0644 $SYSTEM_PRIV_APP/PrebuiltGmsCoreRt/PrebuiltGmsCoreRt.apk
@@ -2346,7 +3233,7 @@ sdk_v29_install() {
       tar tvf $ZIP_FILE/sys/sys_app_GoogleExtShared.tar.xz >> $LOG;
       tar -xf $ZIP_FILE/sys/sys_app_GoogleCalendarSyncAdapter.tar.xz -C $TMP_SYS;
       tar -xf $ZIP_FILE/sys/sys_app_GoogleContactsSyncAdapter.tar.xz -C $TMP_SYS;
-      tar -xf $ZIP_FILE/sys/sys_app_GoogleExtShared.tar.xz -C $TMP_SYS;
+      tar -xf $ZIP_FILE/sys/sys_app_GoogleExtShared.tar.xz -C $TMP_SYS_JAR;
       if [ "$AOSP_PKG_INSTALL" == "true" ]; then
         tar tvf $ZIP_FILE/sys/aosp/sys_app_Messaging.tar.xz >> $LOG;
         tar -xf $ZIP_FILE/sys/aosp/sys_app_Messaging.tar.xz -C $TMP_SYS_AOSP;
@@ -2360,7 +3247,7 @@ sdk_v29_install() {
       tar tvf $ZIP_FILE/core/priv_app_Phonesky.tar.xz >> $LOG;
       tar tvf $ZIP_FILE/core/priv_app_PrebuiltGmsCoreQt.tar.xz >> $LOG;
       tar -xf $ZIP_FILE/core/priv_app_ConfigUpdater.tar.xz -C $TMP_PRIV;
-      tar -xf $ZIP_FILE/core/priv_app_GoogleExtServices.tar.xz -C $TMP_PRIV;
+      tar -xf $ZIP_FILE/core/priv_app_GoogleExtServices.tar.xz -C $TMP_PRIV_JAR;
       tar -xf $ZIP_FILE/core/priv_app_GoogleServicesFramework.tar.xz -C $TMP_PRIV;
       tar -xf $ZIP_FILE/core/priv_app_Phonesky.tar.xz -C $TMP_PRIV;
       tar -xf $ZIP_FILE/core/priv_app_PrebuiltGmsCoreQt.tar.xz -C $TMP_PRIV;
@@ -2412,10 +3299,10 @@ sdk_v29_install() {
     selinux_context_s1() {
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleCalendarSyncAdapter";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleContactsSyncAdapter";
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleExtShared";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_APP_SHARED/GoogleExtShared";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleCalendarSyncAdapter/GoogleCalendarSyncAdapter.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleContactsSyncAdapter/GoogleContactsSyncAdapter.apk";
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleExtShared/GoogleExtShared.apk";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_APP_SHARED/GoogleExtShared/GoogleExtShared.apk";
       if [ "$AOSP_PKG_INSTALL" == "true" ]; then
         chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/Messaging";
         chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/Messaging/Messaging.apk";
@@ -2424,12 +3311,12 @@ sdk_v29_install() {
 
     selinux_context_sp2() {
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/ConfigUpdater";
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/GoogleExtServices";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP_SHARED/GoogleExtServices";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/GoogleServicesFramework";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Phonesky";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/PrebuiltGmsCoreQt";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/ConfigUpdater/ConfigUpdater.apk";
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/GoogleExtServices/GoogleExtServices.apk";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP_SHARED/GoogleExtServices/GoogleExtServices.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Phonesky/Phonesky.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/PrebuiltGmsCoreQt/PrebuiltGmsCoreQt.apk";
@@ -2494,9 +3381,9 @@ sdk_v29_install() {
     apk_opt() {
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_APP/GoogleCalendarSyncAdapter/GoogleCalendarSyncAdapter.apk $ZIPALIGN_OUTFILE/GoogleCalendarSyncAdapter.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_APP/GoogleContactsSyncAdapter/GoogleContactsSyncAdapter.apk $ZIPALIGN_OUTFILE/GoogleContactsSyncAdapter.apk >> $ZIPALIGN_LOG;
-      $ZIPALIGN_TOOL -p -v 4 $SYSTEM_APP/GoogleExtShared/GoogleExtShared.apk $ZIPALIGN_OUTFILE/GoogleExtShared.apk >> $ZIPALIGN_LOG;
+      $ZIPALIGN_TOOL -p -v 4 $SYSTEM_APP_SHARED/GoogleExtShared/GoogleExtShared.apk $ZIPALIGN_OUTFILE/GoogleExtShared.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/ConfigUpdater/ConfigUpdater.apk $ZIPALIGN_OUTFILE/ConfigUpdater.apk >> $ZIPALIGN_LOG;
-      $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/GoogleExtServices/GoogleExtServices.apk $ZIPALIGN_OUTFILE/GoogleExtServices.apk >> $ZIPALIGN_LOG;
+      $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP_SHARED/GoogleExtServices/GoogleExtServices.apk $ZIPALIGN_OUTFILE/GoogleExtServices.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk $ZIPALIGN_OUTFILE/GoogleServicesFramework.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk $ZIPALIGN_OUTFILE/Phonesky.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/PrebuiltGmsCoreQt/PrebuiltGmsCoreQt.apk $ZIPALIGN_OUTFILE/PrebuiltGmsCoreQt.apk >> $ZIPALIGN_LOG;
@@ -2512,9 +3399,9 @@ sdk_v29_install() {
     pre_opt() {
       rm -rf $SYSTEM_APP/GoogleCalendarSyncAdapter/GoogleCalendarSyncAdapter.apk
       rm -rf $SYSTEM_APP/GoogleContactsSyncAdapter/GoogleContactsSyncAdapter.apk
-      rm -rf $SYSTEM_APP/GoogleExtShared/GoogleExtShared.apk
+      rm -rf $SYSTEM_APP_SHARED/GoogleExtShared/GoogleExtShared.apk
       rm -rf $SYSTEM_PRIV_APP/ConfigUpdater/ConfigUpdater.apk
-      rm -rf $SYSTEM_PRIV_APP/GoogleExtServices/GoogleExtServices.apk
+      rm -rf $SYSTEM_PRIV_APP_SHARED/GoogleExtServices/GoogleExtServices.apk
       rm -rf $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk
       rm -rf $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk
       rm -rf $SYSTEM_PRIV_APP/PrebuiltGmsCoreQt/PrebuiltGmsCoreQt.apk
@@ -2530,9 +3417,9 @@ sdk_v29_install() {
     add_opt() {
       cp -f $ZIPALIGN_OUTFILE/GoogleCalendarSyncAdapter.apk $SYSTEM_APP/GoogleCalendarSyncAdapter/GoogleCalendarSyncAdapter.apk
       cp -f $ZIPALIGN_OUTFILE/GoogleContactsSyncAdapter.apk $SYSTEM_APP/GoogleContactsSyncAdapter/GoogleContactsSyncAdapter.apk
-      cp -f $ZIPALIGN_OUTFILE/GoogleExtShared.apk $SYSTEM_APP/GoogleExtShared/GoogleExtShared.apk
+      cp -f $ZIPALIGN_OUTFILE/GoogleExtShared.apk $SYSTEM_APP_SHARED/GoogleExtShared/GoogleExtShared.apk
       cp -f $ZIPALIGN_OUTFILE/ConfigUpdater.apk $SYSTEM_PRIV_APP/ConfigUpdater/ConfigUpdater.apk
-      cp -f $ZIPALIGN_OUTFILE/GoogleExtServices.apk $SYSTEM_PRIV_APP/GoogleExtServices/GoogleExtServices.apk
+      cp -f $ZIPALIGN_OUTFILE/GoogleExtServices.apk $SYSTEM_PRIV_APP_SHARED/GoogleExtServices/GoogleExtServices.apk
       cp -f $ZIPALIGN_OUTFILE/GoogleServicesFramework.apk $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk
       cp -f $ZIPALIGN_OUTFILE/Phonesky.apk $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk
       cp -f $ZIPALIGN_OUTFILE/PrebuiltGmsCoreQt.apk $SYSTEM_PRIV_APP/PrebuiltGmsCoreQt/PrebuiltGmsCoreQt.apk
@@ -2548,9 +3435,9 @@ sdk_v29_install() {
     perm_opt() {
       chmod 0644 $SYSTEM_APP/GoogleCalendarSyncAdapter/GoogleCalendarSyncAdapter.apk
       chmod 0644 $SYSTEM_APP/GoogleContactsSyncAdapter/GoogleContactsSyncAdapter.apk
-      chmod 0644 $SYSTEM_APP/GoogleExtShared/GoogleExtShared.apk
+      chmod 0644 $SYSTEM_APP_SHARED/GoogleExtShared/GoogleExtShared.apk
       chmod 0644 $SYSTEM_PRIV_APP/ConfigUpdater/ConfigUpdater.apk
-      chmod 0644 $SYSTEM_PRIV_APP/GoogleExtServices/GoogleExtServices.apk
+      chmod 0644 $SYSTEM_PRIV_APP_SHARED/GoogleExtServices/GoogleExtServices.apk
       chmod 0644 $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk
       chmod 0644 $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk
       chmod 0644 $SYSTEM_PRIV_APP/PrebuiltGmsCoreQt/PrebuiltGmsCoreQt.apk
@@ -2640,7 +3527,7 @@ sdk_v28_install() {
       tar -xf $ZIP_FILE/sys/sys_app_FaceLock.tar.xz -C $TMP_SYS;
       tar -xf $ZIP_FILE/sys/sys_app_GoogleCalendarSyncAdapter.tar.xz -C $TMP_SYS;
       tar -xf $ZIP_FILE/sys/sys_app_GoogleContactsSyncAdapter.tar.xz -C $TMP_SYS;
-      tar -xf $ZIP_FILE/sys/sys_app_GoogleExtShared.tar.xz -C $TMP_SYS;
+      tar -xf $ZIP_FILE/sys/sys_app_GoogleExtShared.tar.xz -C $TMP_SYS_JAR;
       if [ "$AOSP_PKG_INSTALL" == "true" ]; then
         tar tvf $ZIP_FILE/sys/aosp/sys_app_Messaging.tar.xz >> $LOG;
         tar -xf $ZIP_FILE/sys/aosp/sys_app_Messaging.tar.xz -C $TMP_SYS_AOSP;
@@ -2654,7 +3541,7 @@ sdk_v28_install() {
       tar tvf $ZIP_FILE/core/priv_app_Phonesky.tar.xz >> $LOG;
       tar tvf $ZIP_FILE/core/priv_app_PrebuiltGmsCorePi.tar.xz >> $LOG;
       tar -xf $ZIP_FILE/core/priv_app_ConfigUpdater.tar.xz -C $TMP_PRIV;
-      tar -xf $ZIP_FILE/core/priv_app_GoogleExtServices.tar.xz -C $TMP_PRIV;
+      tar -xf $ZIP_FILE/core/priv_app_GoogleExtServices.tar.xz -C $TMP_PRIV_JAR;
       tar -xf $ZIP_FILE/core/priv_app_GoogleServicesFramework.tar.xz -C $TMP_PRIV;
       tar -xf $ZIP_FILE/core/priv_app_Phonesky.tar.xz -C $TMP_PRIV;
       tar -xf $ZIP_FILE/core/priv_app_PrebuiltGmsCorePi.tar.xz -C $TMP_PRIV;
@@ -2711,11 +3598,11 @@ sdk_v28_install() {
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/FaceLock";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleCalendarSyncAdapter";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleContactsSyncAdapter";
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleExtShared";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_APP_SHARED/GoogleExtShared";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/FaceLock/FaceLock.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleCalendarSyncAdapter/GoogleCalendarSyncAdapter.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleContactsSyncAdapter/GoogleContactsSyncAdapter.apk";
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleExtShared/GoogleExtShared.apk";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_APP_SHARED/GoogleExtShared/GoogleExtShared.apk";
       if [ "$AOSP_PKG_INSTALL" == "true" ]; then
         chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/Messaging";
         chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/Messaging/Messaging.apk";
@@ -2724,12 +3611,12 @@ sdk_v28_install() {
 
     selinux_context_sp2() {
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/ConfigUpdater";
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/GoogleExtServices";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP_SHARED/GoogleExtServices";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/GoogleServicesFramework";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Phonesky";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/PrebuiltGmsCorePi";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/ConfigUpdater/ConfigUpdater.apk";
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/GoogleExtServices/GoogleExtServices.apk";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP_SHARED/GoogleExtServices/GoogleExtServices.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Phonesky/Phonesky.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/PrebuiltGmsCorePi/PrebuiltGmsCorePi.apk";
@@ -2792,9 +3679,9 @@ sdk_v28_install() {
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_APP/FaceLock/FaceLock.apk $ZIPALIGN_OUTFILE/FaceLock.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_APP/GoogleCalendarSyncAdapter/GoogleCalendarSyncAdapter.apk $ZIPALIGN_OUTFILE/GoogleCalendarSyncAdapter.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_APP/GoogleContactsSyncAdapter/GoogleContactsSyncAdapter.apk $ZIPALIGN_OUTFILE/GoogleContactsSyncAdapter.apk >> $ZIPALIGN_LOG;
-      $ZIPALIGN_TOOL -p -v 4 $SYSTEM_APP/GoogleExtShared/GoogleExtShared.apk $ZIPALIGN_OUTFILE/GoogleExtShared.apk >> $ZIPALIGN_LOG;
+      $ZIPALIGN_TOOL -p -v 4 $SYSTEM_APP_SHARED/GoogleExtShared/GoogleExtShared.apk $ZIPALIGN_OUTFILE/GoogleExtShared.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/ConfigUpdater/ConfigUpdater.apk $ZIPALIGN_OUTFILE/ConfigUpdater.apk >> $ZIPALIGN_LOG;
-      $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/GoogleExtServices/GoogleExtServices.apk $ZIPALIGN_OUTFILE/GoogleExtServices.apk >> $ZIPALIGN_LOG;
+      $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP_SHARED/GoogleExtServices/GoogleExtServices.apk $ZIPALIGN_OUTFILE/GoogleExtServices.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk $ZIPALIGN_OUTFILE/GoogleServicesFramework.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk $ZIPALIGN_OUTFILE/Phonesky.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/PrebuiltGmsCorePi/PrebuiltGmsCorePi.apk $ZIPALIGN_OUTFILE/PrebuiltGmsCorePi.apk >> $ZIPALIGN_LOG;
@@ -2811,9 +3698,9 @@ sdk_v28_install() {
       rm -rf $SYSTEM_APP/FaceLock/FaceLock.apk
       rm -rf $SYSTEM_APP/GoogleCalendarSyncAdapter/GoogleCalendarSyncAdapter.apk
       rm -rf $SYSTEM_APP/GoogleContactsSyncAdapter/GoogleContactsSyncAdapter.apk
-      rm -rf $SYSTEM_APP/GoogleExtShared/GoogleExtShared.apk
+      rm -rf $SYSTEM_APP_SHARED/GoogleExtShared/GoogleExtShared.apk
       rm -rf $SYSTEM_PRIV_APP/ConfigUpdater/ConfigUpdater.apk
-      rm -rf $SYSTEM_PRIV_APP/GoogleExtServices/GoogleExtServices.apk
+      rm -rf $SYSTEM_PRIV_APP_SHARED/GoogleExtServices/GoogleExtServices.apk
       rm -rf $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk
       rm -rf $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk
       rm -rf $SYSTEM_PRIV_APP/PrebuiltGmsCorePi/PrebuiltGmsCorePi.apk
@@ -2830,9 +3717,9 @@ sdk_v28_install() {
       cp -f $ZIPALIGN_OUTFILE/FaceLock.apk $SYSTEM_APP/FaceLock/FaceLock.apk
       cp -f $ZIPALIGN_OUTFILE/GoogleCalendarSyncAdapter.apk $SYSTEM_APP/GoogleCalendarSyncAdapter/GoogleCalendarSyncAdapter.apk
       cp -f $ZIPALIGN_OUTFILE/GoogleContactsSyncAdapter.apk $SYSTEM_APP/GoogleContactsSyncAdapter/GoogleContactsSyncAdapter.apk
-      cp -f $ZIPALIGN_OUTFILE/GoogleExtShared.apk $SYSTEM_APP/GoogleExtShared/GoogleExtShared.apk
+      cp -f $ZIPALIGN_OUTFILE/GoogleExtShared.apk $SYSTEM_APP_SHARED/GoogleExtShared/GoogleExtShared.apk
       cp -f $ZIPALIGN_OUTFILE/ConfigUpdater.apk $SYSTEM_PRIV_APP/ConfigUpdater/ConfigUpdater.apk
-      cp -f $ZIPALIGN_OUTFILE/GoogleExtServices.apk $SYSTEM_PRIV_APP/GoogleExtServices/GoogleExtServices.apk
+      cp -f $ZIPALIGN_OUTFILE/GoogleExtServices.apk $SYSTEM_PRIV_APP_SHARED/GoogleExtServices/GoogleExtServices.apk
       cp -f $ZIPALIGN_OUTFILE/GoogleServicesFramework.apk $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk
       cp -f $ZIPALIGN_OUTFILE/Phonesky.apk $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk
       cp -f $ZIPALIGN_OUTFILE/PrebuiltGmsCorePi.apk $SYSTEM_PRIV_APP/PrebuiltGmsCorePi/PrebuiltGmsCorePi.apk
@@ -2849,9 +3736,9 @@ sdk_v28_install() {
       chmod 0644 $SYSTEM_APP/FaceLock/FaceLock.apk
       chmod 0644 $SYSTEM_APP/GoogleCalendarSyncAdapter/GoogleCalendarSyncAdapter.apk
       chmod 0644 $SYSTEM_APP/GoogleContactsSyncAdapter/GoogleContactsSyncAdapter.apk
-      chmod 0644 $SYSTEM_APP/GoogleExtShared/GoogleExtShared.apk
+      chmod 0644 $SYSTEM_APP_SHARED/GoogleExtShared/GoogleExtShared.apk
       chmod 0644 $SYSTEM_PRIV_APP/ConfigUpdater/ConfigUpdater.apk
-      chmod 0644 $SYSTEM_PRIV_APP/GoogleExtServices/GoogleExtServices.apk
+      chmod 0644 $SYSTEM_PRIV_APP_SHARED/GoogleExtServices/GoogleExtServices.apk
       chmod 0644 $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk
       chmod 0644 $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk
       chmod 0644 $SYSTEM_PRIV_APP/PrebuiltGmsCorePi/PrebuiltGmsCorePi.apk
@@ -2941,7 +3828,7 @@ sdk_v27_install() {
       tar -xf $ZIP_FILE/sys/sys_app_FaceLock.tar.xz -C $TMP_SYS;
       tar -xf $ZIP_FILE/sys/sys_app_GoogleCalendarSyncAdapter.tar.xz -C $TMP_SYS;
       tar -xf $ZIP_FILE/sys/sys_app_GoogleContactsSyncAdapter.tar.xz -C $TMP_SYS;
-      tar -xf $ZIP_FILE/sys/sys_app_GoogleExtShared.tar.xz -C $TMP_SYS;
+      tar -xf $ZIP_FILE/sys/sys_app_GoogleExtShared.tar.xz -C $TMP_SYS_JAR;
       if [ "$AOSP_PKG_INSTALL" == "true" ]; then
         tar tvf $ZIP_FILE/sys/aosp/sys_app_Messaging.tar.xz >> $LOG;
         tar -xf $ZIP_FILE/sys/aosp/sys_app_Messaging.tar.xz -C $TMP_SYS_AOSP;
@@ -2955,7 +3842,7 @@ sdk_v27_install() {
       tar tvf $ZIP_FILE/core/priv_app_Phonesky.tar.xz >> $LOG;
       tar tvf $ZIP_FILE/core/priv_app_PrebuiltGmsCorePix.tar.xz >> $LOG;
       tar -xf $ZIP_FILE/core/priv_app_ConfigUpdater.tar.xz -C $TMP_PRIV;
-      tar -xf $ZIP_FILE/core/priv_app_GoogleExtServices.tar.xz -C $TMP_PRIV;
+      tar -xf $ZIP_FILE/core/priv_app_GoogleExtServices.tar.xz -C $TMP_PRIV_JAR;
       tar -xf $ZIP_FILE/core/priv_app_GoogleServicesFramework.tar.xz -C $TMP_PRIV;
       tar -xf $ZIP_FILE/core/priv_app_Phonesky.tar.xz -C $TMP_PRIV;
       tar -xf $ZIP_FILE/core/priv_app_PrebuiltGmsCorePix.tar.xz -C $TMP_PRIV;
@@ -3012,11 +3899,11 @@ sdk_v27_install() {
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/FaceLock";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleCalendarSyncAdapter";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleContactsSyncAdapter";
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleExtShared";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_APP_SHARED/GoogleExtShared";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/FaceLock/FaceLock.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleCalendarSyncAdapter/GoogleCalendarSyncAdapter.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleContactsSyncAdapter/GoogleContactsSyncAdapter.apk";
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleExtShared/GoogleExtShared.apk";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_APP_SHARED/GoogleExtShared/GoogleExtShared.apk";
       if [ "$AOSP_PKG_INSTALL" == "true" ]; then
         chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/Messaging";
         chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/Messaging/Messaging.apk";
@@ -3025,12 +3912,12 @@ sdk_v27_install() {
 
     selinux_context_sp2() {
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/ConfigUpdater";
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/GoogleExtServices";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP_SHARED/GoogleExtServices";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/GoogleServicesFramework";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Phonesky";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/PrebuiltGmsCorePix";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/ConfigUpdater/ConfigUpdater.apk";
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/GoogleExtServices/GoogleExtServices.apk";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP_SHARED/GoogleExtServices/GoogleExtServices.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Phonesky/Phonesky.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/PrebuiltGmsCorePix/PrebuiltGmsCorePix.apk";
@@ -3098,9 +3985,9 @@ sdk_v27_install() {
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_APP/FaceLock/FaceLock.apk $ZIPALIGN_OUTFILE/FaceLock.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_APP/GoogleCalendarSyncAdapter/GoogleCalendarSyncAdapter.apk $ZIPALIGN_OUTFILE/GoogleCalendarSyncAdapter.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_APP/GoogleContactsSyncAdapter/GoogleContactsSyncAdapter.apk $ZIPALIGN_OUTFILE/GoogleContactsSyncAdapter.apk >> $ZIPALIGN_LOG;
-      $ZIPALIGN_TOOL -p -v 4 $SYSTEM_APP/GoogleExtShared/GoogleExtShared.apk $ZIPALIGN_OUTFILE/GoogleExtShared.apk >> $ZIPALIGN_LOG;
+      $ZIPALIGN_TOOL -p -v 4 $SYSTEM_APP_SHARED/GoogleExtShared/GoogleExtShared.apk $ZIPALIGN_OUTFILE/GoogleExtShared.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/ConfigUpdater/ConfigUpdater.apk $ZIPALIGN_OUTFILE/ConfigUpdater.apk >> $ZIPALIGN_LOG;
-      $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/GoogleExtServices/GoogleExtServices.apk $ZIPALIGN_OUTFILE/GoogleExtServices.apk >> $ZIPALIGN_LOG;
+      $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP_SHARED/GoogleExtServices/GoogleExtServices.apk $ZIPALIGN_OUTFILE/GoogleExtServices.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk $ZIPALIGN_OUTFILE/GoogleServicesFramework.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk $ZIPALIGN_OUTFILE/Phonesky.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/PrebuiltGmsCorePix/PrebuiltGmsCorePix.apk $ZIPALIGN_OUTFILE/PrebuiltGmsCorePix.apk >> $ZIPALIGN_LOG;
@@ -3117,9 +4004,9 @@ sdk_v27_install() {
       rm -rf $SYSTEM_APP/FaceLock/FaceLock.apk
       rm -rf $SYSTEM_APP/GoogleCalendarSyncAdapter/GoogleCalendarSyncAdapter.apk
       rm -rf $SYSTEM_APP/GoogleContactsSyncAdapter/GoogleContactsSyncAdapter.apk
-      rm -rf $SYSTEM_APP/GoogleExtShared/GoogleExtShared.apk
+      rm -rf $SYSTEM_APP_SHARED/GoogleExtShared/GoogleExtShared.apk
       rm -rf $SYSTEM_PRIV_APP/ConfigUpdater/ConfigUpdater.apk
-      rm -rf $SYSTEM_PRIV_APP/GoogleExtServices/GoogleExtServices.apk
+      rm -rf $SYSTEM_PRIV_APP_SHARED/GoogleExtServices/GoogleExtServices.apk
       rm -rf $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk
       rm -rf $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk
       rm -rf $SYSTEM_PRIV_APP/PrebuiltGmsCorePix/PrebuiltGmsCorePix.apk
@@ -3136,9 +4023,9 @@ sdk_v27_install() {
       cp -f $ZIPALIGN_OUTFILE/FaceLock.apk $SYSTEM_APP/FaceLock/FaceLock.apk
       cp -f $ZIPALIGN_OUTFILE/GoogleCalendarSyncAdapter.apk $SYSTEM_APP/GoogleCalendarSyncAdapter/GoogleCalendarSyncAdapter.apk
       cp -f $ZIPALIGN_OUTFILE/GoogleContactsSyncAdapter.apk $SYSTEM_APP/GoogleContactsSyncAdapter/GoogleContactsSyncAdapter.apk
-      cp -f $ZIPALIGN_OUTFILE/GoogleExtShared.apk $SYSTEM_APP/GoogleExtShared/GoogleExtShared.apk
+      cp -f $ZIPALIGN_OUTFILE/GoogleExtShared.apk $SYSTEM_APP_SHARED/GoogleExtShared/GoogleExtShared.apk
       cp -f $ZIPALIGN_OUTFILE/ConfigUpdater.apk $SYSTEM_PRIV_APP/ConfigUpdater/ConfigUpdater.apk
-      cp -f $ZIPALIGN_OUTFILE/GoogleExtServices.apk $SYSTEM_PRIV_APP/GoogleExtServices/GoogleExtServices.apk
+      cp -f $ZIPALIGN_OUTFILE/GoogleExtServices.apk $SYSTEM_PRIV_APP_SHARED/GoogleExtServices/GoogleExtServices.apk
       cp -f $ZIPALIGN_OUTFILE/GoogleServicesFramework.apk $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk
       cp -f $ZIPALIGN_OUTFILE/Phonesky.apk $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk
       cp -f $ZIPALIGN_OUTFILE/PrebuiltGmsCorePix.apk $SYSTEM_PRIV_APP/PrebuiltGmsCorePix/PrebuiltGmsCorePix.apk
@@ -3155,9 +4042,9 @@ sdk_v27_install() {
       chmod 0644 $SYSTEM_APP/FaceLock/FaceLock.apk
       chmod 0644 $SYSTEM_APP/GoogleCalendarSyncAdapter/GoogleCalendarSyncAdapter.apk
       chmod 0644 $SYSTEM_APP/GoogleContactsSyncAdapter/GoogleContactsSyncAdapter.apk
-      chmod 0644 $SYSTEM_APP/GoogleExtShared/GoogleExtShared.apk
+      chmod 0644 $SYSTEM_APP_SHARED/GoogleExtShared/GoogleExtShared.apk
       chmod 0644 $SYSTEM_PRIV_APP/ConfigUpdater/ConfigUpdater.apk
-      chmod 0644 $SYSTEM_PRIV_APP/GoogleExtServices/GoogleExtServices.apk
+      chmod 0644 $SYSTEM_PRIV_APP_SHARED/GoogleExtServices/GoogleExtServices.apk
       chmod 0644 $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk
       chmod 0644 $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk
       chmod 0644 $SYSTEM_PRIV_APP/PrebuiltGmsCorePix/PrebuiltGmsCorePix.apk
@@ -3249,7 +4136,7 @@ sdk_v25_install() {
       tar -xf $ZIP_FILE/sys/sys_app_FaceLock.tar.xz -C $TMP_SYS;
       tar -xf $ZIP_FILE/sys/sys_app_GoogleCalendarSyncAdapter.tar.xz -C $TMP_SYS;
       tar -xf $ZIP_FILE/sys/sys_app_GoogleContactsSyncAdapter.tar.xz -C $TMP_SYS;
-      tar -xf $ZIP_FILE/sys/sys_app_GoogleExtShared.tar.xz -C $TMP_SYS;
+      tar -xf $ZIP_FILE/sys/sys_app_GoogleExtShared.tar.xz -C $TMP_SYS_JAR;
       if [ "$AOSP_PKG_INSTALL" == "true" ]; then
         tar tvf $ZIP_FILE/sys/aosp/sys_app_Messaging.tar.xz >> $LOG;
         tar -xf $ZIP_FILE/sys/aosp/sys_app_Messaging.tar.xz -C $TMP_SYS_AOSP;
@@ -3264,7 +4151,7 @@ sdk_v25_install() {
       tar tvf $ZIP_FILE/core/priv_app_Phonesky.tar.xz >> $LOG;
       tar tvf $ZIP_FILE/core/priv_app_PrebuiltGmsCore.tar.xz >> $LOG;
       tar -xf $ZIP_FILE/core/priv_app_ConfigUpdater.tar.xz -C $TMP_PRIV;
-      tar -xf $ZIP_FILE/core/priv_app_GoogleExtServices.tar.xz -C $TMP_PRIV;
+      tar -xf $ZIP_FILE/core/priv_app_GoogleExtServices.tar.xz -C $TMP_PRIV_JAR;
       tar -xf $ZIP_FILE/core/priv_app_GoogleLoginService.tar.xz -C $TMP_PRIV;
       tar -xf $ZIP_FILE/core/priv_app_GoogleServicesFramework.tar.xz -C $TMP_PRIV;
       tar -xf $ZIP_FILE/core/priv_app_Phonesky.tar.xz -C $TMP_PRIV;
@@ -3322,11 +4209,11 @@ sdk_v25_install() {
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/FaceLock";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleCalendarSyncAdapter";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleContactsSyncAdapter";
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleExtShared";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_APP_SHARED/GoogleExtShared";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/FaceLock/FaceLock.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleCalendarSyncAdapter/GoogleCalendarSyncAdapter.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleContactsSyncAdapter/GoogleContactsSyncAdapter.apk";
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/GoogleExtShared/GoogleExtShared.apk";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_APP_SHARED/GoogleExtShared/GoogleExtShared.apk";
       if [ "$AOSP_PKG_INSTALL" == "true" ]; then
         chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/Messaging";
         chcon -h u:object_r:system_file:s0 "$SYSTEM_APP/Messaging/Messaging.apk";
@@ -3335,13 +4222,13 @@ sdk_v25_install() {
 
     selinux_context_sp2() {
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/ConfigUpdater";
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/GoogleExtServices";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP_SHARED/GoogleExtServices";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/GoogleLoginService";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/GoogleServicesFramework";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Phonesky";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/PrebuiltGmsCore";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/ConfigUpdater/ConfigUpdater.apk";
-      chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/GoogleExtServices/GoogleExtServices.apk";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP_SHARED/GoogleExtServices/GoogleExtServices.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/GoogleLoginService/GoogleLoginService.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/Phonesky/Phonesky.apk";
@@ -3409,9 +4296,9 @@ sdk_v25_install() {
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_APP/FaceLock/FaceLock.apk $ZIPALIGN_OUTFILE/FaceLock.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_APP/GoogleCalendarSyncAdapter/GoogleCalendarSyncAdapter.apk $ZIPALIGN_OUTFILE/GoogleCalendarSyncAdapter.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_APP/GoogleContactsSyncAdapter/GoogleContactsSyncAdapter.apk $ZIPALIGN_OUTFILE/GoogleContactsSyncAdapter.apk >> $ZIPALIGN_LOG;
-      $ZIPALIGN_TOOL -p -v 4 $SYSTEM_APP/GoogleExtShared/GoogleExtShared.apk $ZIPALIGN_OUTFILE/GoogleExtShared.apk >> $ZIPALIGN_LOG;
+      $ZIPALIGN_TOOL -p -v 4 $SYSTEM_APP_SHARED/GoogleExtShared/GoogleExtShared.apk $ZIPALIGN_OUTFILE/GoogleExtShared.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/ConfigUpdater/ConfigUpdater.apk $ZIPALIGN_OUTFILE/ConfigUpdater.apk >> $ZIPALIGN_LOG;
-      $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/GoogleExtServices/GoogleExtServices.apk $ZIPALIGN_OUTFILE/GoogleExtServices.apk >> $ZIPALIGN_LOG;
+      $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP_SHARED/GoogleExtServices/GoogleExtServices.apk $ZIPALIGN_OUTFILE/GoogleExtServices.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/GoogleLoginService/GoogleLoginService.apk $ZIPALIGN_OUTFILE/GoogleLoginService.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk $ZIPALIGN_OUTFILE/GoogleServicesFramework.apk >> $ZIPALIGN_LOG;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk $ZIPALIGN_OUTFILE/Phonesky.apk >> $ZIPALIGN_LOG;
@@ -3429,9 +4316,9 @@ sdk_v25_install() {
       rm -rf $SYSTEM_APP/FaceLock/FaceLock.apk
       rm -rf $SYSTEM_APP/GoogleCalendarSyncAdapter/GoogleCalendarSyncAdapter.apk
       rm -rf $SYSTEM_APP/GoogleContactsSyncAdapter/GoogleContactsSyncAdapter.apk
-      rm -rf $SYSTEM_APP/GoogleExtShared/GoogleExtShared.apk
+      rm -rf $SYSTEM_APP_SHARED/GoogleExtShared/GoogleExtShared.apk
       rm -rf $SYSTEM_PRIV_APP/ConfigUpdater/ConfigUpdater.apk
-      rm -rf $SYSTEM_PRIV_APP/GoogleExtServices/GoogleExtServices.apk
+      rm -rf $SYSTEM_PRIV_APP_SHARED/GoogleExtServices/GoogleExtServices.apk
       rm -rf $SYSTEM_PRIV_APP/GoogleLoginService/GoogleLoginService.apk
       rm -rf $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk
       rm -rf $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk
@@ -3449,9 +4336,9 @@ sdk_v25_install() {
       cp -f $ZIPALIGN_OUTFILE/FaceLock.apk $SYSTEM_APP/FaceLock/FaceLock.apk
       cp -f $ZIPALIGN_OUTFILE/GoogleCalendarSyncAdapter.apk $SYSTEM_APP/GoogleCalendarSyncAdapter/GoogleCalendarSyncAdapter.apk
       cp -f $ZIPALIGN_OUTFILE/GoogleContactsSyncAdapter.apk $SYSTEM_APP/GoogleContactsSyncAdapter/GoogleContactsSyncAdapter.apk
-      cp -f $ZIPALIGN_OUTFILE/GoogleExtShared.apk $SYSTEM_APP/GoogleExtShared/GoogleExtShared.apk
+      cp -f $ZIPALIGN_OUTFILE/GoogleExtShared.apk $SYSTEM_APP_SHARED/GoogleExtShared/GoogleExtShared.apk
       cp -f $ZIPALIGN_OUTFILE/ConfigUpdater.apk $SYSTEM_PRIV_APP/ConfigUpdater/ConfigUpdater.apk
-      cp -f $ZIPALIGN_OUTFILE/GoogleExtServices.apk $SYSTEM_PRIV_APP/GoogleExtServices/GoogleExtServices.apk
+      cp -f $ZIPALIGN_OUTFILE/GoogleExtServices.apk $SYSTEM_PRIV_APP_SHARED/GoogleExtServices/GoogleExtServices.apk
       cp -f $ZIPALIGN_OUTFILE/GoogleLoginService.apk $SYSTEM_PRIV_APP/GoogleLoginService/GoogleLoginService.apk
       cp -f $ZIPALIGN_OUTFILE/GoogleServicesFramework.apk $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk
       cp -f $ZIPALIGN_OUTFILE/Phonesky.apk $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk
@@ -3469,9 +4356,9 @@ sdk_v25_install() {
       chmod 0644 $SYSTEM_APP/FaceLock/FaceLock.apk
       chmod 0644 $SYSTEM_APP/GoogleCalendarSyncAdapter/GoogleCalendarSyncAdapter.apk
       chmod 0644 $SYSTEM_APP/GoogleContactsSyncAdapter/GoogleContactsSyncAdapter.apk
-      chmod 0644 $SYSTEM_APP/GoogleExtShared/GoogleExtShared.apk
+      chmod 0644 $SYSTEM_APP_SHARED/GoogleExtShared/GoogleExtShared.apk
       chmod 0644 $SYSTEM_PRIV_APP/ConfigUpdater/ConfigUpdater.apk
-      chmod 0644 $SYSTEM_PRIV_APP/GoogleExtServices/GoogleExtServices.apk
+      chmod 0644 $SYSTEM_PRIV_APP_SHARED/GoogleExtServices/GoogleExtServices.apk
       chmod 0644 $SYSTEM_PRIV_APP/GoogleLoginService/GoogleLoginService.apk
       chmod 0644 $SYSTEM_PRIV_APP/GoogleServicesFramework/GoogleServicesFramework.apk
       chmod 0644 $SYSTEM_PRIV_APP/Phonesky/Phonesky.apk
@@ -3588,12 +4475,12 @@ set_setup_install() {
     # Unpack SetupWizard components
     extract_app_initial() {
       tar tvf $ZIP_FILE/core/priv_app_GoogleBackupTransport.tar.xz >> $config_log;
-      if [ "$android_sdk" -gt "25" ]; then # Unsupported component for SDK 25
+      if [ "$android_sdk" -gt "27" ]; then # Only support API 28 and above
         tar tvf $ZIP_FILE/core/priv_app_GoogleRestore.tar.xz >> $config_log;
       fi;
       tar tvf $ZIP_FILE/core/priv_app_SetupWizard.tar.xz >> $config_log;
       tar -xf $ZIP_FILE/core/priv_app_GoogleBackupTransport.tar.xz -C $TMP_PRIV_SETUP;
-      if [ "$android_sdk" -gt "25" ]; then # Unsupported component for SDK 25
+      if [ "$android_sdk" -gt "27" ]; then # Only support API 28 and above
         tar -xf $ZIP_FILE/core/priv_app_GoogleRestore.tar.xz -C $TMP_PRIV_SETUP;
       fi;
       tar -xf $ZIP_FILE/core/priv_app_SetupWizard.tar.xz -C $TMP_PRIV_SETUP;
@@ -3603,31 +4490,21 @@ set_setup_install() {
     # Selinux context for SetupWizard components
     selinux_context_sp2_initial() {
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/GoogleBackupTransport";
-      if [ "$android_sdk" -gt "25" ]; then # Unsupported component for SDK 25
+      if [ "$android_sdk" -gt "27" ]; then # Only support API 28 and above
         chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/GoogleRestore";
       fi;
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/SetupWizard";
-      # TODO: Requires odex/vdex files patched inside APK
-      if [ "$android_sdk" == "$supported_sdk_v30" ]; then
-        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/SetupWizard/oat";
-        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/SetupWizard/oat/arm64";
-      fi;
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/GoogleBackupTransport/GoogleBackupTransport.apk";
-      if [ "$android_sdk" -gt "25" ]; then # Unsupported component for SDK 25
+      if [ "$android_sdk" -gt "27" ]; then # Only support API 28 and above
         chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/GoogleRestore/GoogleRestore.apk";
       fi;
       chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/SetupWizard/SetupWizard.apk";
-      # TODO: Requires odex/vdex files patched inside APK
-      if [ "$android_sdk" == "$supported_sdk_v30" ]; then
-        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/SetupWizard/oat/arm64/SetupWizard.odex";
-        chcon -h u:object_r:system_file:s0 "$SYSTEM_PRIV_APP/SetupWizard/oat/arm64/SetupWizard.vdex";
-      fi;
     }
 
     # SetupWizard components optimization using zipalign tool
     apk_opt_initial() {
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/GoogleBackupTransport/GoogleBackupTransport.apk $ZIPALIGN_OUTFILE/GoogleBackupTransport.apk >> $ZIPALIGN_LOG;
-      if [ "$android_sdk" -gt "25" ]; then # Unsupported component for SDK 25
+      if [ "$android_sdk" -gt "27" ]; then # Only support API 28 and above
         $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/GoogleRestore/GoogleRestore.apk $ZIPALIGN_OUTFILE/GoogleRestore.apk >> $ZIPALIGN_LOG;
       fi;
       $ZIPALIGN_TOOL -p -v 4 $SYSTEM_PRIV_APP/SetupWizard/SetupWizard.apk $ZIPALIGN_OUTFILE/SetupWizard.apk >> $ZIPALIGN_LOG;
@@ -3635,7 +4512,7 @@ set_setup_install() {
 
     pre_opt_initial() {
       rm -rf $SYSTEM_PRIV_APP/GoogleBackupTransport/GoogleBackupTransport.apk
-      if [ "$android_sdk" -gt "25" ]; then # Unsupported component for SDK 25
+      if [ "$android_sdk" -gt "27" ]; then # Only support API 28 and above
         rm -rf $SYSTEM_PRIV_APP/GoogleRestore/GoogleRestore.apk
       fi;
       rm -rf $SYSTEM_PRIV_APP/SetupWizard/SetupWizard.apk
@@ -3643,7 +4520,7 @@ set_setup_install() {
 
     add_opt_initial() {
       cp -f $ZIPALIGN_OUTFILE/GoogleBackupTransport.apk $SYSTEM_PRIV_APP/GoogleBackupTransport/GoogleBackupTransport.apk
-      if [ "$android_sdk" -gt "25" ]; then # Unsupported component for SDK 25
+      if [ "$android_sdk" -gt "27" ]; then # Only support API 28 and above
         cp -f $ZIPALIGN_OUTFILE/GoogleRestore.apk $SYSTEM_PRIV_APP/GoogleRestore/GoogleRestore.apk
       fi;
       cp -f $ZIPALIGN_OUTFILE/SetupWizard.apk $SYSTEM_PRIV_APP/SetupWizard/SetupWizard.apk
@@ -3651,23 +4528,13 @@ set_setup_install() {
 
     perm_opt_initial() {
       chmod 0644 $SYSTEM_PRIV_APP/GoogleBackupTransport/GoogleBackupTransport.apk
-      if [ "$android_sdk" -gt "25" ]; then # Unsupported component for SDK 25
+      if [ "$android_sdk" -gt "27" ]; then # Only support API 28 and above
         chmod 0644 $SYSTEM_PRIV_APP/GoogleRestore/GoogleRestore.apk
       fi;
       chmod 0644 $SYSTEM_PRIV_APP/SetupWizard/SetupWizard.apk
     }
 
     # end opt initial method
-
-    # Fix SetupWizard dex file permission for SDK30
-    perm_Dex() {
-      if [ "$android_sdk" == "$supported_sdk_v30" ]; then
-        chmod 0755 $SYSTEM_PRIV_APP/SetupWizard/oat
-        chmod 0755 $SYSTEM_PRIV_APP/SetupWizard/oat/arm64
-        chmod 0644 $SYSTEM_PRIV_APP/SetupWizard/oat/arm64/SetupWizard.odex
-        chmod 0644 $SYSTEM_PRIV_APP/SetupWizard/oat/arm64/SetupWizard.vdex
-      fi;
-    }
 
     # Initiate SetupWizard components installation
     on_config_install() {
@@ -3681,7 +4548,6 @@ set_setup_install() {
       # Re-run selinux function for optimized APKs
       selinux_context_sp2_initial;
       # end selinux function
-      perm_Dex;
     }
     on_config_install;
   else
@@ -3848,6 +4714,14 @@ set_addon_zip() {
       rm -rf $SYSTEM/product/priv-app/calculator*
       rm -rf $SYSTEM/product/priv-app/ExactCalculator
       rm -rf $SYSTEM/product/priv-app/Exactcalculator
+      rm -rf $SYSTEM/system_ext/app/Calculator*
+      rm -rf $SYSTEM/system_ext/app/calculator*
+      rm -rf $SYSTEM/system_ext/app/ExactCalculator
+      rm -rf $SYSTEM/system_ext/app/Exactcalculator
+      rm -rf $SYSTEM/system_ext/priv-app/Calculator*
+      rm -rf $SYSTEM/system_ext/priv-app/calculator*
+      rm -rf $SYSTEM/system_ext/priv-app/ExactCalculator
+      rm -rf $SYSTEM/system_ext/priv-app/Exactcalculator
       # Set install variable
       ADDON_SYS="sys_app_CalculatorGooglePrebuilt.tar.xz";
       PKG_SYS="CalculatorGooglePrebuilt";
@@ -3861,6 +4735,8 @@ set_addon_zip() {
       test -d $SYSTEM/priv-app/CalendarProvider && SYS_PRIV_CP="true" || SYS_PRIV_CP="false";
       test -d $SYSTEM/product/app/CalendarProvider && PRO_APP_CP="true" || PRO_APP_CP="false";
       test -d $SYSTEM/product/priv-app/CalendarProvider && PRO_PRIV_CP="true" || PRO_PRIV_CP="false";
+      test -d $SYSTEM/system_ext/app/CalendarProvider && SYS_APP_EXT_CP="true" || SYS_APP_EXT_CP="false";
+      test -d $SYSTEM/system_ext/priv-app/CalendarProvider && SYS_PRIV_EXT_CP="true" || SYS_PRIV_EXT_CP="false";
       if [ "$SYS_APP_CP" == "true" ]; then
         mv $SYSTEM/app/CalendarProvider $TMP/restore/CalendarProvider
       fi;
@@ -3872,6 +4748,12 @@ set_addon_zip() {
       fi;
       if [ "$PRO_PRIV_CP" == "true" ]; then
         mv $SYSTEM/product/priv-app/CalendarProvider $TMP/restore/CalendarProvider
+      fi;
+      if [ "$SYS_APP_EXT_CP" == "true" ]; then
+        mv $SYSTEM/system_ext/app/CalendarProvider $TMP/restore/CalendarProvider
+      fi;
+      if [ "$SYS_PRIV_EXT_CP" == "true" ]; then
+        mv $SYSTEM/system_ext/priv-app/CalendarProvider $TMP/restore/CalendarProvider
       fi;
       # Remove AOSP Calendar
       rm -rf $SYSTEM/app/Calendar*
@@ -3886,6 +4768,12 @@ set_addon_zip() {
       rm -rf $SYSTEM/product/priv-app/Calendar*
       rm -rf $SYSTEM/product/priv-app/calendar*
       rm -rf $SYSTEM/product/priv-app/Etar
+      rm -rf $SYSTEM/system_ext/app/Calendar*
+      rm -rf $SYSTEM/system_ext/app/calendar*
+      rm -rf $SYSTEM/system_ext/app/Etar
+      rm -rf $SYSTEM/system_ext/priv-app/Calendar*
+      rm -rf $SYSTEM/system_ext/priv-app/calendar*
+      rm -rf $SYSTEM/system_ext/priv-app/Etar
       # Set install variable
       ADDON_SYS="sys_app_CalendarGooglePrebuilt.tar.xz";
       PKG_SYS="CalendarGooglePrebuilt";
@@ -3904,6 +4792,12 @@ set_addon_zip() {
       if [ "$PRO_PRIV_CP" == "true" ]; then
         mv $TMP/restore/CalendarProvider $SYSTEM/product/priv-app/CalendarProvider
       fi;
+      if [ "$SYS_APP_EXT_CP" == "true" ]; then
+        mv $TMP/restore/CalendarProvider $SYSTEM/system_ext/app/CalendarProvider
+      fi;
+      if [ "$SYS_PRIV_EXT_CP" == "true" ]; then
+        mv $TMP/restore/CalendarProvider $SYSTEM/system_ext/priv-app/CalendarProvider
+      fi;
     fi;
     if [ "$supported_contacts_config" == "$supported_target" ]; then
       ui_print "Installing Contacts Google";
@@ -3912,6 +4806,8 @@ set_addon_zip() {
       test -d $SYSTEM/priv-app/ContactsProvider && SYS_PRIV_CTT="true" || SYS_PRIV_CTT="false";
       test -d $SYSTEM/product/app/ContactsProvider && PRO_APP_CTT="true" || PRO_APP_CTT="false";
       test -d $SYSTEM/product/priv-app/ContactsProvider && PRO_PRIV_CTT="true" || PRO_PRIV_CTT="false";
+      test -d $SYSTEM/system_ext/app/ContactsProvider && SYS_APP_EXT_CTT="true" || SYS_APP_EXT_CTT="false";
+      test -d $SYSTEM/system_ext/priv-app/ContactsProvider && SYS_PRIV_EXT_CTT="true" || SYS_PRIV_EXT_CTT="false";
       if [ "$SYS_APP_CTT" == "true" ]; then
         mv $SYSTEM/app/ContactsProvider $TMP/restore/ContactsProvider
       fi;
@@ -3924,6 +4820,12 @@ set_addon_zip() {
       if [ "$PRO_PRIV_CTT" == "true" ]; then
         mv $SYSTEM/product/priv-app/ContactsProvider $TMP/restore/ContactsProvider
       fi;
+      if [ "$SYS_APP_EXT_CTT" == "true" ]; then
+        mv $SYSTEM/system_ext/app/ContactsProvider $TMP/restore/ContactsProvider
+      fi;
+      if [ "$SYS_PRIV_EXT_CTT" == "true" ]; then
+        mv $SYSTEM/system_ext/priv-app/ContactsProvider $TMP/restore/ContactsProvider
+      fi;
       # Remove AOSP Contacts
       rm -rf $SYSTEM/app/Contacts*
       rm -rf $SYSTEM/app/contacts*
@@ -3933,6 +4835,10 @@ set_addon_zip() {
       rm -rf $SYSTEM/product/app/contacts*
       rm -rf $SYSTEM/product/priv-app/Contacts*
       rm -rf $SYSTEM/product/priv-app/contacts*
+      rm -rf $SYSTEM/system_ext/app/Contacts*
+      rm -rf $SYSTEM/system_ext/app/contacts*
+      rm -rf $SYSTEM/system_ext/priv-app/Contacts*
+      rm -rf $SYSTEM/system_ext/priv-app/contacts*
       # Set install variable
       ADDON_CORE="priv_app_ContactsGooglePrebuilt.tar.xz";
       PKG_CORE="ContactsGooglePrebuilt";
@@ -3951,6 +4857,12 @@ set_addon_zip() {
       if [ "$PRO_PRIV_CTT" == "true" ]; then
         mv $TMP/restore/ContactsProvider $SYSTEM/product/priv-app/ContactsProvider
       fi;
+      if [ "$SYS_APP_EXT_CTT" == "true" ]; then
+        mv $TMP/restore/ContactsProvider $SYSTEM/system_ext/app/ContactsProvider
+      fi;
+      if [ "$SYS_PRIV_EXT_CTT" == "true" ]; then
+        mv $TMP/restore/ContactsProvider $SYSTEM/system_ext/priv-app/ContactsProvider
+      fi;
     fi;
     if [ "$supported_deskclock_config" == "$supported_target" ]; then
       ui_print "Installing Deskclock Google";
@@ -3963,6 +4875,10 @@ set_addon_zip() {
       rm -rf $SYSTEM/product/app/Clock*
       rm -rf $SYSTEM/product/priv-app/DeskClock*
       rm -rf $SYSTEM/product/priv-app/Clock*
+      rm -rf $SYSTEM/system_ext/app/DeskClock*
+      rm -rf $SYSTEM/system_ext/app/Clock*
+      rm -rf $SYSTEM/system_ext/priv-app/DeskClock*
+      rm -rf $SYSTEM/system_ext/priv-app/Clock*
       # Set install variable
       ADDON_SYS="sys_app_DeskClockGooglePrebuilt.tar.xz";
       PKG_SYS="DeskClockGooglePrebuilt";
@@ -3980,6 +4896,10 @@ set_addon_zip() {
       rm -rf $SYSTEM/product/app/dialer*
       rm -rf $SYSTEM/product/priv-app/Dialer*
       rm -rf $SYSTEM/product/priv-app/dialer*
+      rm -rf $SYSTEM/system_ext/app/Dialer*
+      rm -rf $SYSTEM/system_ext/app/dialer*
+      rm -rf $SYSTEM/system_ext/priv-app/Dialer*
+      rm -rf $SYSTEM/system_ext/priv-app/dialer*
       # Set install variable
       ADDON_CORE="priv_app_DialerGooglePrebuilt.tar.xz";
       PKG_CORE="DialerGooglePrebuilt";
@@ -3995,6 +4915,8 @@ set_addon_zip() {
       rm -rf $SYSTEM/priv-app/MarkupGoogle*
       rm -rf $SYSTEM/product/app/MarkupGoogle*
       rm -rf $SYSTEM/product/priv-app/MarkupGoogle*
+      rm -rf $SYSTEM/system_ext/app/MarkupGoogle*
+      rm -rf $SYSTEM/system_ext/priv-app/MarkupGoogle*
       # Set install variable
       ADDON_SYS="sys_app_MarkupGooglePrebuilt.tar.xz";
       PKG_SYS="MarkupGooglePrebuilt";
@@ -4022,6 +4944,14 @@ set_addon_zip() {
       rm -rf $SYSTEM/product/priv-app/messages*
       rm -rf $SYSTEM/product/priv-app/Messaging*
       rm -rf $SYSTEM/product/priv-app/messaging*
+      rm -rf $SYSTEM/system_ext/app/Messages*
+      rm -rf $SYSTEM/system_ext/app/messages*
+      rm -rf $SYSTEM/system_ext/app/Messaging*
+      rm -rf $SYSTEM/system_ext/app/messaging*
+      rm -rf $SYSTEM/system_ext/priv-app/Messages*
+      rm -rf $SYSTEM/system_ext/priv-app/messages*
+      rm -rf $SYSTEM/system_ext/priv-app/Messaging*
+      rm -rf $SYSTEM/system_ext/priv-app/messaging*
       # Set install variable
       ADDON_SYS="sys_app_MessagesGooglePrebuilt.tar.xz";
       PKG_SYS="MessagesGooglePrebuilt";
@@ -4042,6 +4972,10 @@ set_addon_zip() {
       rm -rf $SYSTEM/product/app/photos*
       rm -rf $SYSTEM/product/priv-app/Photos*
       rm -rf $SYSTEM/product/priv-app/photos*
+      rm -rf $SYSTEM/system_ext/app/Photos*
+      rm -rf $SYSTEM/system_ext/app/photos*
+      rm -rf $SYSTEM/system_ext/priv-app/Photos*
+      rm -rf $SYSTEM/system_ext/priv-app/photos*
       # Set install variable
       ADDON_SYS="sys_app_PhotosGooglePrebuilt.tar.xz";
       PKG_SYS="PhotosGooglePrebuilt";
@@ -4055,6 +4989,8 @@ set_addon_zip() {
       rm -rf $SYSTEM/priv-app/SoundPicker*
       rm -rf $SYSTEM/product/app/SoundPicker*
       rm -rf $SYSTEM/product/priv-app/SoundPicker*
+      rm -rf $SYSTEM/system_ext/app/SoundPicker*
+      rm -rf $SYSTEM/system_ext/priv-app/SoundPicker*
       # Set install variable
       ADDON_SYS="sys_app_SoundPickerPrebuilt.tar.xz";
       PKG_SYS="SoundPickerPrebuilt";
@@ -4072,6 +5008,10 @@ set_addon_zip() {
       rm -rf $SYSTEM/product/app/velvet*
       rm -rf $SYSTEM/product/priv-app/Velvet*
       rm -rf $SYSTEM/product/priv-app/velvet*
+      rm -rf $SYSTEM/system_ext/app/Velvet*
+      rm -rf $SYSTEM/system_ext/app/velvet*
+      rm -rf $SYSTEM/system_ext/priv-app/Velvet*
+      rm -rf $SYSTEM/system_ext/priv-app/velvet*
       # Set install variable
       ADDON_CORE="priv_app_Velvet.tar.xz";
       PKG_CORE="Velvet";
@@ -4091,6 +5031,10 @@ set_addon_zip() {
         rm -rf $SYSTEM/product/app/wellbeing*
         rm -rf $SYSTEM/product/priv-app/Wellbeing*
         rm -rf $SYSTEM/product/priv-app/wellbeing*
+        rm -rf $SYSTEM/system_ext/app/Wellbeing*
+        rm -rf $SYSTEM/system_ext/app/wellbeing*
+        rm -rf $SYSTEM/system_ext/priv-app/Wellbeing*
+        rm -rf $SYSTEM/system_ext/priv-app/wellbeing*
         # Set install variable
         ADDON_CORE="priv_app_WellbeingPrebuilt.tar.xz";
         PKG_CORE="WellbeingPrebuilt";
@@ -4118,6 +5062,14 @@ set_addon_zip() {
       rm -rf $SYSTEM/product/priv-app/calculator*
       rm -rf $SYSTEM/product/priv-app/ExactCalculator
       rm -rf $SYSTEM/product/priv-app/Exactcalculator
+      rm -rf $SYSTEM/system_ext/app/Calculator*
+      rm -rf $SYSTEM/system_ext/app/calculator*
+      rm -rf $SYSTEM/system_ext/app/ExactCalculator
+      rm -rf $SYSTEM/system_ext/app/Exactcalculator
+      rm -rf $SYSTEM/system_ext/priv-app/Calculator*
+      rm -rf $SYSTEM/system_ext/priv-app/calculator*
+      rm -rf $SYSTEM/system_ext/priv-app/ExactCalculator
+      rm -rf $SYSTEM/system_ext/priv-app/Exactcalculator
       # Set install variable
       ADDON_SYS="sys_app_CalculatorGooglePrebuilt.tar.xz";
       PKG_SYS="CalculatorGooglePrebuilt";
@@ -4131,6 +5083,8 @@ set_addon_zip() {
       test -d $SYSTEM/priv-app/CalendarProvider && SYS_PRIV_CP="true" || SYS_PRIV_CP="false";
       test -d $SYSTEM/product/app/CalendarProvider && PRO_APP_CP="true" || PRO_APP_CP="false";
       test -d $SYSTEM/product/priv-app/CalendarProvider && PRO_PRIV_CP="true" || PRO_PRIV_CP="false";
+      test -d $SYSTEM/system_ext/app/CalendarProvider && SYS_APP_EXT_CP="true" || SYS_APP_EXT_CP="false";
+      test -d $SYSTEM/system_ext/priv-app/CalendarProvider && SYS_PRIV_EXT_CP="true" || SYS_PRIV_EXT_CP="false";
       if [ "$SYS_APP_CP" == "true" ]; then
         mv $SYSTEM/app/CalendarProvider $TMP/restore/CalendarProvider
       fi;
@@ -4142,6 +5096,12 @@ set_addon_zip() {
       fi;
       if [ "$PRO_PRIV_CP" == "true" ]; then
         mv $SYSTEM/product/priv-app/CalendarProvider $TMP/restore/CalendarProvider
+      fi;
+      if [ "$SYS_APP_EXT_CP" == "true" ]; then
+        mv $SYSTEM/system_ext/app/CalendarProvider $TMP/restore/CalendarProvider
+      fi;
+      if [ "$SYS_PRIV_EXT_CP" == "true" ]; then
+        mv $SYSTEM/system_ext/priv-app/CalendarProvider $TMP/restore/CalendarProvider
       fi;
       # Remove AOSP Calendar
       rm -rf $SYSTEM/app/Calendar*
@@ -4156,6 +5116,12 @@ set_addon_zip() {
       rm -rf $SYSTEM/product/priv-app/Calendar*
       rm -rf $SYSTEM/product/priv-app/calendar*
       rm -rf $SYSTEM/product/priv-app/Etar
+      rm -rf $SYSTEM/system_ext/app/Calendar*
+      rm -rf $SYSTEM/system_ext/app/calendar*
+      rm -rf $SYSTEM/system_ext/app/Etar
+      rm -rf $SYSTEM/system_ext/priv-app/Calendar*
+      rm -rf $SYSTEM/system_ext/priv-app/calendar*
+      rm -rf $SYSTEM/system_ext/priv-app/Etar
       # Set install variable
       ADDON_SYS="sys_app_CalendarGooglePrebuilt.tar.xz";
       PKG_SYS="CalendarGooglePrebuilt";
@@ -4174,6 +5140,12 @@ set_addon_zip() {
       if [ "$PRO_PRIV_CP" == "true" ]; then
         mv $TMP/restore/CalendarProvider $SYSTEM/product/priv-app/CalendarProvider
       fi;
+      if [ "$SYS_APP_EXT_CP" == "true" ]; then
+        mv $TMP/restore/CalendarProvider $SYSTEM/system_ext/app/CalendarProvider
+      fi;
+      if [ "$SYS_PRIV_EXT_CP" == "true" ]; then
+        mv $TMP/restore/CalendarProvider $SYSTEM/system_ext/priv-app/CalendarProvider
+      fi;
     fi;
       if [ "$TARGET_CONTACTS_GOOGLE" == "true" ]; then
       ui_print "Installing Contacts Google";
@@ -4182,6 +5154,8 @@ set_addon_zip() {
       test -d $SYSTEM/priv-app/ContactsProvider && SYS_PRIV_CTT="true" || SYS_PRIV_CTT="false";
       test -d $SYSTEM/product/app/ContactsProvider && PRO_APP_CTT="true" || PRO_APP_CTT="false";
       test -d $SYSTEM/product/priv-app/ContactsProvider && PRO_PRIV_CTT="true" || PRO_PRIV_CTT="false";
+      test -d $SYSTEM/system_ext/app/ContactsProvider && SYS_APP_EXT_CTT="true" || SYS_APP_EXT_CTT="false";
+      test -d $SYSTEM/system_ext/priv-app/ContactsProvider && SYS_PRIV_EXT_CTT="true" || SYS_PRIV_EXT_CTT="false";
       if [ "$SYS_APP_CTT" == "true" ]; then
         mv $SYSTEM/app/ContactsProvider $TMP/restore/ContactsProvider
       fi;
@@ -4194,6 +5168,12 @@ set_addon_zip() {
       if [ "$PRO_PRIV_CTT" == "true" ]; then
         mv $SYSTEM/product/priv-app/ContactsProvider $TMP/restore/ContactsProvider
       fi;
+      if [ "$SYS_APP_EXT_CTT" == "true" ]; then
+        mv $SYSTEM/system_ext/app/ContactsProvider $TMP/restore/ContactsProvider
+      fi;
+      if [ "$SYS_PRIV_EXT_CTT" == "true" ]; then
+        mv $SYSTEM/system_ext/priv-app/ContactsProvider $TMP/restore/ContactsProvider
+      fi;
       # Remove AOSP Contacts
       rm -rf $SYSTEM/app/Contacts*
       rm -rf $SYSTEM/app/contacts*
@@ -4203,6 +5183,10 @@ set_addon_zip() {
       rm -rf $SYSTEM/product/app/contacts*
       rm -rf $SYSTEM/product/priv-app/Contacts*
       rm -rf $SYSTEM/product/priv-app/contacts*
+      rm -rf $SYSTEM/system_ext/app/Contacts*
+      rm -rf $SYSTEM/system_ext/app/contacts*
+      rm -rf $SYSTEM/system_ext/priv-app/Contacts*
+      rm -rf $SYSTEM/system_ext/priv-app/contacts*
       # Set install variable
       ADDON_CORE="priv_app_ContactsGooglePrebuilt.tar.xz";
       PKG_CORE="ContactsGooglePrebuilt";
@@ -4221,6 +5205,12 @@ set_addon_zip() {
       if [ "$PRO_PRIV_CTT" == "true" ]; then
         mv $TMP/restore/ContactsProvider $SYSTEM/product/priv-app/ContactsProvider
       fi;
+      if [ "$SYS_APP_EXT_CTT" == "true" ]; then
+        mv $TMP/restore/ContactsProvider $SYSTEM/system_ext/app/ContactsProvider
+      fi;
+      if [ "$SYS_PRIV_EXT_CTT" == "true" ]; then
+        mv $TMP/restore/ContactsProvider $SYSTEM/system_ext/priv-app/ContactsProvider
+      fi;
     fi;
     if [ "$TARGET_DESKCLOCK_GOOGLE" == "true" ]; then
       ui_print "Installing Deskclock Google";
@@ -4233,6 +5223,10 @@ set_addon_zip() {
       rm -rf $SYSTEM/product/app/Clock*
       rm -rf $SYSTEM/product/priv-app/DeskClock*
       rm -rf $SYSTEM/product/priv-app/Clock*
+      rm -rf $SYSTEM/system_ext/app/DeskClock*
+      rm -rf $SYSTEM/system_ext/app/Clock*
+      rm -rf $SYSTEM/system_ext/priv-app/DeskClock*
+      rm -rf $SYSTEM/system_ext/priv-app/Clock*
       # Set install variable
       ADDON_SYS="sys_app_DeskClockGooglePrebuilt.tar.xz";
       PKG_SYS="DeskClockGooglePrebuilt";
@@ -4250,6 +5244,10 @@ set_addon_zip() {
       rm -rf $SYSTEM/product/app/dialer*
       rm -rf $SYSTEM/product/priv-app/Dialer*
       rm -rf $SYSTEM/product/priv-app/dialer*
+      rm -rf $SYSTEM/system_ext/app/Dialer*
+      rm -rf $SYSTEM/system_ext/app/dialer*
+      rm -rf $SYSTEM/system_ext/priv-app/Dialer*
+      rm -rf $SYSTEM/system_ext/priv-app/dialer*
       # Set install variable
       ADDON_CORE="priv_app_DialerGooglePrebuilt.tar.xz";
       PKG_CORE="DialerGooglePrebuilt";
@@ -4265,6 +5263,8 @@ set_addon_zip() {
       rm -rf $SYSTEM/priv-app/MarkupGoogle*
       rm -rf $SYSTEM/product/app/MarkupGoogle*
       rm -rf $SYSTEM/product/priv-app/MarkupGoogle*
+      rm -rf $SYSTEM/system_ext/app/MarkupGoogle*
+      rm -rf $SYSTEM/system_ext/priv-app/MarkupGoogle*
       # Set install variable
       ADDON_SYS="sys_app_MarkupGooglePrebuilt.tar.xz";
       PKG_SYS="MarkupGooglePrebuilt";
@@ -4292,6 +5292,14 @@ set_addon_zip() {
       rm -rf $SYSTEM/product/priv-app/messages*
       rm -rf $SYSTEM/product/priv-app/Messaging*
       rm -rf $SYSTEM/product/priv-app/messaging*
+      rm -rf $SYSTEM/system_ext/app/Messages*
+      rm -rf $SYSTEM/system_ext/app/messages*
+      rm -rf $SYSTEM/system_ext/app/Messaging*
+      rm -rf $SYSTEM/system_ext/app/messaging*
+      rm -rf $SYSTEM/system_ext/priv-app/Messages*
+      rm -rf $SYSTEM/system_ext/priv-app/messages*
+      rm -rf $SYSTEM/system_ext/priv-app/Messaging*
+      rm -rf $SYSTEM/system_ext/priv-app/messaging*
       # Set install variable
       if [ "$device_architecture" == "$ANDROID_PLATFORM_ARM32" ]; then
         ADDON_SYS="sys_app_MessagesGooglePrebuilt_arm.tar.xz";
@@ -4320,6 +5328,10 @@ set_addon_zip() {
       rm -rf $SYSTEM/product/app/photos*
       rm -rf $SYSTEM/product/priv-app/Photos*
       rm -rf $SYSTEM/product/priv-app/photos*
+      rm -rf $SYSTEM/system_ext/app/Photos*
+      rm -rf $SYSTEM/system_ext/app/photos*
+      rm -rf $SYSTEM/system_ext/priv-app/Photos*
+      rm -rf $SYSTEM/system_ext/priv-app/photos*
       # Set install variable
       ADDON_SYS="sys_app_PhotosGooglePrebuilt.tar.xz";
       PKG_SYS="PhotosGooglePrebuilt";
@@ -4333,6 +5345,8 @@ set_addon_zip() {
       rm -rf $SYSTEM/priv-app/SoundPicker*
       rm -rf $SYSTEM/product/app/SoundPicker*
       rm -rf $SYSTEM/product/priv-app/SoundPicker*
+      rm -rf $SYSTEM/system_ext/app/SoundPicker*
+      rm -rf $SYSTEM/system_ext/priv-app/SoundPicker*
       # Set install variable
       ADDON_SYS="sys_app_SoundPickerPrebuilt.tar.xz";
       PKG_SYS="SoundPickerPrebuilt";
@@ -4350,6 +5364,10 @@ set_addon_zip() {
       rm -rf $SYSTEM/product/app/velvet*
       rm -rf $SYSTEM/product/priv-app/Velvet*
       rm -rf $SYSTEM/product/priv-app/velvet*
+      rm -rf $SYSTEM/system_ext/app/Velvet*
+      rm -rf $SYSTEM/system_ext/app/velvet*
+      rm -rf $SYSTEM/system_ext/priv-app/Velvet*
+      rm -rf $SYSTEM/system_ext/priv-app/velvet*
       # Set install variable
       ADDON_CORE="priv_app_Velvet.tar.xz";
       PKG_CORE="Velvet";
@@ -4369,6 +5387,10 @@ set_addon_zip() {
         rm -rf $SYSTEM/product/app/wellbeing*
         rm -rf $SYSTEM/product/priv-app/Wellbeing*
         rm -rf $SYSTEM/product/priv-app/wellbeing*
+        rm -rf $SYSTEM/system_ext/app/Wellbeing*
+        rm -rf $SYSTEM/system_ext/app/wellbeing*
+        rm -rf $SYSTEM/system_ext/priv-app/Wellbeing*
+        rm -rf $SYSTEM/system_ext/priv-app/wellbeing*
         # Set install variable
         ADDON_CORE="priv_app_WellbeingPrebuilt.tar.xz";
         PKG_CORE="WellbeingPrebuilt";
@@ -4412,6 +5434,7 @@ opt_v28() {
 }
 
 # Delete existing GMS Doze entry from all XML files
+# This function should be executed before 'post_install()' function
 opt_v29() {
   if [ "$android_sdk" == "$supported_sdk_v29" ]; then
     sed -i '/allow-in-power-save package="com.google.android.gms"/d' $SYSTEM/etc/permissions/*.xml
@@ -4422,6 +5445,7 @@ opt_v29() {
 }
 
 # Delete existing GMS Doze entry from all XML files
+# This function should be executed before 'post_install()' function
 opt_v30() {
   if [ "$android_sdk" == "$supported_sdk_v30" ]; then
     sed -i '/allow-in-power-save package="com.google.android.gms"/d' $SYSTEM/etc/permissions/*.xml
@@ -4455,6 +5479,20 @@ purge_whitelist_permission() {
     fi;
   else
     echo "ERROR: unable to find product 'build.prop'" >> $whitelist;
+  fi;
+  if [ -f "$SYSTEM/system_ext/build.prop" ]; then
+    if [ -n "$(cat $SYSTEM/system_ext/build.prop | grep control_privapp_permissions)" ]; then
+      mkdir $TMP/system_ext
+      grep -v "$PROPFLAG" $SYSTEM/system_ext/build.prop > $TMP/system_ext/build.prop
+      rm -rf $SYSTEM/system_ext/build.prop
+      cp -f $TMP/system_ext/build.prop $SYSTEM/system_ext/build.prop
+      chmod 0644 $SYSTEM/system_ext/build.prop
+      rm -rf $TMP/system_ext/build.prop
+    else
+      echo "ERROR: Unable to find Whitelist property in 'system_ext'" >> $whitelist;
+    fi;
+  else
+    echo "ERROR: unable to find system_ext 'build.prop'" >> $whitelist;
   fi;
   if [ -f $SYSTEM/etc/prop.default ]; then
     if [ -n "$(cat $SYSTEM/etc/prop.default | grep control_privapp_permissions)" ]; then
@@ -4612,19 +5650,24 @@ cts_patch() {
   else
     if [ "$cts_config" == "true" ]; then
       if [ "$supported_cts_config" == "$supported_target" ]; then
+        if [ "$android_sdk" == "$supported_sdk_v25" ]; then
+          echo "ERROR: Safetynet patch does not support Android SDK $android_sdk" >> $CTS_PATCH;
+        fi;
+        if [ "$android_sdk" == "$supported_sdk_v27" ]; then
+          echo "ERROR: Safetynet patch does not support Android SDK $android_sdk" >> $CTS_PATCH;
+        fi;
+        if [ "$android_sdk" == "$supported_sdk_v28" ]; then
+          echo "ERROR: Safetynet patch does not support Android SDK $android_sdk" >> $CTS_PATCH;
+        fi;
         if [ "$android_sdk" == "$supported_sdk_v29" ]; then
           patch_v29;
           cts_patch_system;
           cts_patch_vendor;
-        else
-          echo "ERROR: Safetynet patch does not support Android SDK $android_sdk" >> $CTS_PATCH;
         fi;
         if [ "$android_sdk" == "$supported_sdk_v30" ]; then
           patch_v30;
           cts_patch_system;
           cts_patch_vendor;
-        else
-          echo "ERROR: Safetynet patch does not support Android SDK $android_sdk" >> $CTS_PATCH;
         fi;
       else
         echo "ERROR: Config property set to 'false'" >> $CTS_PATCH;
@@ -4789,6 +5832,7 @@ function pre_install() {
     # boot_AB;
     # boot_A;
     # boot_SYS;
+    # boot_R;
     # on_AB;
     mount_stat;
     profile;
@@ -4802,6 +5846,9 @@ function pre_install() {
     check_platform;
     on_data_check;
     clean_inst;
+    opt_defaults;
+    opt_v29;
+    opt_v30;
   fi;
 }
 pre_install;
@@ -4814,16 +5861,31 @@ diskfree() {
   # Disk space in human readable format (k=1024)
   ds_hr=`df -h $ANDROID_ROOT | tail -n 1 | tr -s ' ' | cut -d' ' -f4`
 
-  # Check if the available space is greater than 200MB (200000KB)
-  ui_print "Checking System Space";
-  if [[ "$size" -gt "$CAPACITY" ]]; then
-    ui_print "$ds_hr";
-    ui_print " ";
-  else
-    ui_print " ";
-    ui_print "No space left in device. Aborting...";
-    on_abort "Current space : $ds_hr";
-    ui_print " ";
+  if [ "$device_superpartition" == "false" ]; then
+    # Check if the available space is greater than 200MB (200000KB)
+    ui_print "Checking System Space";
+    if [[ "$size" -gt "$CAPACITY" ]]; then
+      ui_print "$ds_hr";
+      ui_print " ";
+    else
+      ui_print " ";
+      ui_print "No space left in device. Aborting...";
+      on_abort "Current space : $ds_hr";
+      ui_print " ";
+    fi;
+  fi;
+  if [ "$device_superpartition" == "true" ]; then
+    # Check if the available space is greater than 200MB (200000KB)
+    ui_print "Checking Product Space";
+    if [[ "$size" -gt "$CAPACITY" ]]; then
+      ui_print "$ds_hr";
+      ui_print " ";
+    else
+      ui_print " ";
+      ui_print "No space left in device. Aborting...";
+      on_abort "Current space : $ds_hr";
+      ui_print " ";
+    fi;
   fi;
 }
 if [ "$ZIPTYPE" == "basic" ]; then
@@ -4839,6 +5901,7 @@ fi;
 function post_install() {
   if [ "$ZIPTYPE" == "addon" ]; then
     build_defaults;
+    ext_pathmap;
     product_pathmap;
     system_pathmap;
     recovery_actions;
@@ -4850,8 +5913,10 @@ function post_install() {
     recovery_cleanup;
   else
     build_defaults;
+    ext_pathmap;
     product_pathmap;
     system_pathmap;
+    shared_library;
     recovery_actions;
     mk_component;
     on_gsf_check;
@@ -4875,8 +5940,6 @@ function post_install() {
     # backup_script;
     set_assistant;
     opt_v28;
-    opt_v29;
-    opt_v30;
     on_whitelist_check;
     whitelist_patch;
     on_cts_check;
