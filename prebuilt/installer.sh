@@ -150,6 +150,7 @@ build_defaults() {
   LINKER="/cache/bitgapps/lib-symlink.log";
   PARTITION="/cache/bitgapps/vendor.log";
   CTS_PATCH="/cache/bitgapps/config-cts.log";
+  SEC_PATCH="/cache/bitgapps/sec-level.log";
   SETUP_CONFIG="/cache/bitgapps/config-setupwizard.log";
   ADDON_CONFIG="/cache/bitgapps/config-addon.log";
   TARGET_SYSTEM="/cache/bitgapps/cts-system.log";
@@ -179,13 +180,13 @@ build_defaults() {
     CTS_VENDOR_BUILD_SEC_PATCH="ro.vendor.build.security_patch=2020-08-05";
   }
   patch_v30() {
-    CTS_SYSTEM_EXT_BUILD_FINGERPRINT="ro.system.build.fingerprint=google/coral/coral:11/RP1A.200720.009/6720564:user/release-keys";
-    CTS_SYSTEM_BUILD_FINGERPRINT="ro.build.fingerprint=google/coral/coral:11/RP1A.200720.009/6720564:user/release-keys";
-    CTS_SYSTEM_BUILD_SEC_PATCH="ro.build.version.security_patch=2020-09-05";
+    CTS_SYSTEM_EXT_BUILD_FINGERPRINT="ro.system.build.fingerprint=google/coral/coral:11/RP1A.201105.002/6869500:user/release-keys";
+    CTS_SYSTEM_BUILD_FINGERPRINT="ro.build.fingerprint=google/coral/coral:11/RP1A.201105.002/6869500:user/release-keys";
+    CTS_SYSTEM_BUILD_SEC_PATCH="ro.build.version.security_patch=2020-11-05";
     CTS_SYSTEM_BUILD_TYPE="ro.build.type=user";
-    CTS_VENDOR_BUILD_FINGERPRINT="ro.vendor.build.fingerprint=google/coral/coral:11/RP1A.200720.009/6720564:user/release-keys";
-    CTS_VENDOR_BUILD_BOOTIMAGE="ro.bootimage.build.fingerprint=google/coral/coral:11/RP1A.200720.009/6720564:user/release-keys";
-    CTS_VENDOR_BUILD_SEC_PATCH="ro.vendor.build.security_patch=2020-09-05";
+    CTS_VENDOR_BUILD_FINGERPRINT="ro.vendor.build.fingerprint=google/coral/coral:11/RP1A.201105.002/6869500:user/release-keys";
+    CTS_VENDOR_BUILD_BOOTIMAGE="ro.bootimage.build.fingerprint=google/coral/coral:11/RP1A.201105.002/6869500:user/release-keys";
+    CTS_VENDOR_BUILD_SEC_PATCH="ro.vendor.build.security_patch=2020-11-05";
   }
 }
 
@@ -193,6 +194,7 @@ build_defaults() {
 on_partition_check() {
   system_as_root=`getprop ro.build.system_root_image`
   active_slot=`getprop ro.boot.slot_suffix`
+  AB_OTA_UPDATER=`getprop ro.build.ab_update`
   dynamic_partitions=`getprop ro.boot.dynamic_partitions`
 }
 
@@ -222,7 +224,7 @@ vendor_mnt() {
 ab_partition() {
   device_abpartition="false";
   if [ "$system_as_root" == "true" ]; then
-    if [ ! -z "$active_slot" ]; then
+    if [ ! -z "$active_slot" ] || [ -n "$AB_OTA_UPDATER" ]; then
       device_abpartition="true";
     fi;
   fi;
@@ -325,6 +327,7 @@ early_umount() {
   umount /product 2>/dev/null;
   # For devices with dynamic partitions
   umount $ANDROID_ROOT 2>/dev/null;
+  umount /system_ext 2>/dev/null;
 }
 
 # Mount partitions
@@ -339,11 +342,20 @@ mount_all() {
   mount -o ro -t auto /persist 2>/dev/null;
   if [ "$dynamic_partitions" == "true" ]; then
     test -d $ANDROID_ROOT="/system_root" && ANDROID_ROOT="/system_root" || ANDROID_ROOT="/system";
+    if [ "$ANDROID_ROOT" == "/system_root" ]; then
+      echo "$ANDROID_ROOT" >> $TMP/IS_MOUNTED_SAR;
+    fi;
+    if [ "$ANDROID_ROOT" == "/system" ]; then
+      echo "$ANDROID_ROOT" >> $TMP/IS_MOUNTED_SAS;
+    fi;
     if [ "$device_abpartition" == "true" ]; then
       for block in system product vendor; do
         for slot in "" _a _b; do
           blockdev --setrw /dev/block/mapper/$block$slot 2>/dev/null;
         done
+      done
+      for block in system_ext; do
+        blockdev --setrw /dev/block/mapper/$block 2>/dev/null;
       done
       local slot=$(getprop ro.boot.slot_suffix 2>/dev/null)
       mount -o ro -t auto /dev/block/mapper/system$slot $ANDROID_ROOT 2>/dev/null;
@@ -354,8 +366,18 @@ mount_all() {
       fi;
       mount -o ro -t auto /dev/block/mapper/product$slot /product 2>/dev/null;
       mount -o rw,remount -t auto /dev/block/mapper/product$slot /product
+      mount -o ro -t auto /dev/block/mapper/system_ext /system_ext 2>/dev/null;
+      mount -o rw,remount -t auto /dev/block/mapper/system_ext /system_ext
+      if [ -n "$(cat /etc/recovery.fstab | grep /system_ext)" ]; then
+        device_extpartition="true";
+      elif [ -n "$(cat /etc/twrp.fstab | grep /system_ext)" ]; then
+        device_extpartition="true";
+      else
+        device_extpartition="false";
+      fi;
+      ls -l /dev/block/mapper/system_ext >> $TMP/system-ext.log
     else
-      for block in system product vendor; do
+      for block in system system_ext product vendor; do
         blockdev --setrw /dev/block/mapper/$block 2>/dev/null
       done
       mount -o ro -t auto /dev/block/mapper/system $ANDROID_ROOT 2>/dev/null;
@@ -366,12 +388,22 @@ mount_all() {
       fi;
       mount -o ro -t auto /dev/block/mapper/product /product 2>/dev/null;
       mount -o rw,remount -t auto /dev/block/mapper/product /product
+      mount -o ro -t auto /dev/block/mapper/system_ext /system_ext 2>/dev/null;
+      mount -o rw,remount -t auto /dev/block/mapper/system_ext /system_ext
+      if [ -n "$(cat /etc/recovery.fstab | grep /system_ext)" ]; then
+        device_extpartition="true";
+      elif [ -n "$(cat /etc/twrp.fstab | grep /system_ext)" ]; then
+        device_extpartition="true";
+      else
+        device_extpartition="false";
+      fi;
+      ls -l /dev/block/mapper/system_ext >> $TMP/system-ext.log
     fi;
   else
     if [ -d /system_root ] && [ -n "$(cat /etc/fstab | grep /system_root)" ]; then
-      ANDROID_ROOT="/system_root";
+      ANDROID_ROOT="/system_root" && echo "$ANDROID_ROOT" >> $TMP/IS_MOUNTED_SAR;
     else
-      ANDROID_ROOT="/system";
+      ANDROID_ROOT="/system" && echo "$ANDROID_ROOT" >> $TMP/IS_MOUNTED_SAS;
     fi;
     mount -o ro -t auto $ANDROID_ROOT 2>/dev/null;
     mount -o rw,remount -t auto $ANDROID_ROOT
@@ -414,10 +446,34 @@ mount_all() {
   mount_apex;
 }
 
+# Set system layout for property check
+system_property() {
+  if [ -f /system_root/system/build.prop ] && [ -n "$(cat /etc/fstab | grep /system_root)" ]; then
+    ANDROID_PROPERTY="/system_root/system";
+  elif [ -f /system_root/system/build.prop ]; then
+    ANDROID_PROPERTY="/system_root/system";
+  elif [ -f /system/system/build.prop ] && [ -n "$(cat /etc/fstab | grep /system)" ]; then
+    ANDROID_PROPERTY="/system/system";
+  elif [ -f /system/system/build.prop ]; then
+    ANDROID_PROPERTY="/system/system";
+  elif [ "$device_abpartition" == "true" ]; then
+    ANDROID_PROPERTY="/system/system";
+  elif [ "$device_abpartition" == "true" ] && [ -n "$(cat /etc/fstab | grep /system_root)" ]; then
+    ANDROID_PROPERTY="/system_root/system";
+  elif [ "$device_abpartition" == "true" ] && [ -n "$(cat /etc/fstab | grep /system)" ]; then
+    ANDROID_PROPERTY="/system/system";
+  elif [ -f /system/build.prop ] && [ -n "$(cat /etc/fstab | grep /system_root)" ]; then
+    ANDROID_PROPERTY="/system";
+  else
+    ANDROID_PROPERTY="/system";
+  fi;
+}
+
 # Set installation layout
 system_layout() {
   if [ "$dynamic_partitions" == "true" ]; then
     SYSTEM="$ANDROID_ROOT/system";
+    echo "$SYSTEM" >> $TMP/IS_LAYOUT_SYSTEM;
   else
     if [ -f /system_root/system/build.prop ] && [ -n "$(cat /etc/fstab | grep /system_root)" ]; then
       SYSTEM="/system_root/system";
@@ -434,6 +490,7 @@ system_layout() {
     else
       SYSTEM="/system";
     fi;
+    echo "$SYSTEM" >> $TMP/IS_LAYOUT_SYSTEM;
   fi;
 }
 
@@ -528,13 +585,26 @@ on_mount_failed() {
   mkdir /cache/bitgapps
   cd /cache/bitgapps
   cp -f $TMP/recovery.log /cache/bitgapps/recovery.log 2>/dev/null;
+  cp -f $TMP/IS_MOUNTED_SAR /cache/bitgapps/IS_MOUNTED_SAR 2>/dev/null;
+  cp -f $TMP/IS_MOUNTED_SAS /cache/bitgapps/IS_MOUNTED_SAS 2>/dev/null;
+  cp -f $TMP/IS_LAYOUT_SYSTEM /cache/bitgapps/IS_LAYOUT_SYSTEM 2>/dev/null;
+  cp -f $TMP/system-ext.log /cache/bitgapps/system-ext.log 2>/dev/null;
   cp -f /etc/fstab /cache/bitgapps/fstab 2>/dev/null;
   cp -f /etc/recovery.fstab /cache/bitgapps/recovery.fstab 2>/dev/null;
+  cp -f /etc/twrp.fstab /cache/bitgapps/twrp.fstab 2>/dev/null;
   echo "$ANDROID_ROOT" >> /cache/bitgapps/mount.log 2>/dev/null;
-  tar -cz -f "$TMP/bitgapps_debug_failed_logs.tar.gz" *
-  cp -f $TMP/bitgapps_debug_failed_logs.tar.gz $INTERNAL/bitgapps_debug_failed_logs.tar.gz
+  if [ "$ZIPTYPE" == "basic" ]; then
+    tar -cz -f "$TMP/bitgapps_debug_failed_logs.tar.gz" *
+    cp -f $TMP/bitgapps_debug_failed_logs.tar.gz $INTERNAL/bitgapps_debug_failed_logs.tar.gz
+  fi;
+  if [ "$ZIPTYPE" == "addon" ]; then
+    tar -cz -f "$TMP/bitgapps_addon_failed_logs.tar.gz" *
+    cp -f $TMP/bitgapps_addon_failed_logs.tar.gz $INTERNAL/bitgapps_addon_failed_logs.tar.gz
+  fi;
   # Checkout log path
   cd /
+  # Keep a copy of recovery log in cache partition for devices with LOS recovery
+  cp -f $TMP/recovery.log /cache/recovery.log 2>/dev/null;
 }
 
 # Generate a separate log file on abort
@@ -544,8 +614,13 @@ on_install_failed() {
   mkdir /cache/bitgapps
   cd /cache/bitgapps
   cp -f $TMP/recovery.log /cache/bitgapps/recovery.log 2>/dev/null;
+  cp -f $TMP/IS_MOUNTED_SAR /cache/bitgapps/IS_MOUNTED_SAR 2>/dev/null;
+  cp -f $TMP/IS_MOUNTED_SAS /cache/bitgapps/IS_MOUNTED_SAS 2>/dev/null;
+  cp -f $TMP/IS_LAYOUT_SYSTEM /cache/bitgapps/IS_LAYOUT_SYSTEM 2>/dev/null;
+  cp -f $TMP/system-ext.log /cache/bitgapps/system-ext.log 2>/dev/null;
   cp -f /etc/fstab /cache/bitgapps/fstab 2>/dev/null;
   cp -f /etc/recovery.fstab /cache/bitgapps/recovery.fstab 2>/dev/null;
+  cp -f /etc/twrp.fstab /cache/bitgapps/twrp.fstab 2>/dev/null;
   cp -f $SYSTEM/build.prop /cache/bitgapps/system.prop 2>/dev/null;
   cp -f $SYSTEM/product/build.prop /cache/bitgapps/product.prop 2>/dev/null;
   cp -f $SYSTEM/system_ext/build.prop /cache/bitgapps/ext.prop 2>/dev/null;
@@ -559,10 +634,18 @@ on_install_failed() {
   cp -f $INTERNAL/cts-config.prop /cache/bitgapps/cts-config.prop 2>/dev/null;
   cp -f $INTERNAL/setup-config.prop /cache/bitgapps/setup-config.prop 2>/dev/null;
   echo "$ANDROID_ROOT" >> /cache/bitgapps/mount.log 2>/dev/null;
-  tar -cz -f "$TMP/bitgapps_debug_failed_logs.tar.gz" *
-  cp -f $TMP/bitgapps_debug_failed_logs.tar.gz $INTERNAL/bitgapps_debug_failed_logs.tar.gz
+  if [ "$ZIPTYPE" == "basic" ]; then
+    tar -cz -f "$TMP/bitgapps_debug_failed_logs.tar.gz" *
+    cp -f $TMP/bitgapps_debug_failed_logs.tar.gz $INTERNAL/bitgapps_debug_failed_logs.tar.gz
+  fi;
+  if [ "$ZIPTYPE" == "addon" ]; then
+    tar -cz -f "$TMP/bitgapps_addon_failed_logs.tar.gz" *
+    cp -f $TMP/bitgapps_addon_failed_logs.tar.gz $INTERNAL/bitgapps_addon_failed_logs.tar.gz
+  fi;
   # Checkout log path
   cd /
+  # Keep a copy of recovery log in cache partition for devices with LOS recovery
+  cp -f $TMP/recovery.log /cache/recovery.log 2>/dev/null;
 }
 
 # log
@@ -572,8 +655,13 @@ on_install_complete() {
   cp -f $TMP/recovery.log /cache/bitgapps/recovery.log 2>/dev/null;
   cp -f $TMP/gms_opt_v29.log /cache/bitgapps/gms_opt_v29.log 2>/dev/null;
   cp -f $TMP/gms_opt_v30.log /cache/bitgapps/gms_opt_v30.log 2>/dev/null;
+  cp -f $TMP/IS_MOUNTED_SAR /cache/bitgapps/IS_MOUNTED_SAR 2>/dev/null;
+  cp -f $TMP/IS_MOUNTED_SAS /cache/bitgapps/IS_MOUNTED_SAS 2>/dev/null;
+  cp -f $TMP/IS_LAYOUT_SYSTEM /cache/bitgapps/IS_LAYOUT_SYSTEM 2>/dev/null;
+  cp -f $TMP/system-ext.log /cache/bitgapps/system-ext.log 2>/dev/null;
   cp -f /etc/fstab /cache/bitgapps/fstab 2>/dev/null;
   cp -f /etc/recovery.fstab /cache/bitgapps/recovery.fstab 2>/dev/null;
+  cp -f /etc/twrp.fstab /cache/bitgapps/twrp.fstab 2>/dev/null;
   cp -f $SYSTEM/build.prop /cache/bitgapps/system.prop 2>/dev/null;
   cp -f $SYSTEM/product/build.prop /cache/bitgapps/product.prop 2>/dev/null;
   cp -f $SYSTEM/system_ext/build.prop /cache/bitgapps/ext.prop 2>/dev/null;
@@ -587,15 +675,24 @@ on_install_complete() {
   cp -f $INTERNAL/cts-config.prop /cache/bitgapps/cts-config.prop 2>/dev/null;
   cp -f $INTERNAL/setup-config.prop /cache/bitgapps/setup-config.prop 2>/dev/null;
   echo "$ANDROID_ROOT" >> /cache/bitgapps/mount.log 2>/dev/null;
-  tar -cz -f "$TMP/bitgapps_debug_complete_logs.tar.gz" *
-  cp -f $TMP/bitgapps_debug_complete_logs.tar.gz $INTERNAL/bitgapps_debug_complete_logs.tar.gz
+  if [ "$ZIPTYPE" == "basic" ]; then
+    tar -cz -f "$TMP/bitgapps_debug_complete_logs.tar.gz" *
+    cp -f $TMP/bitgapps_debug_complete_logs.tar.gz $INTERNAL/bitgapps_debug_complete_logs.tar.gz
+  fi;
+  if [ "$ZIPTYPE" == "addon" ]; then
+    tar -cz -f "$TMP/bitgapps_addon_complete_logs.tar.gz" *
+    cp -f $TMP/bitgapps_addon_complete_logs.tar.gz $INTERNAL/bitgapps_addon_complete_logs.tar.gz
+  fi;
   # Checkout log path
   cd /
+  # Keep a copy of recovery log in cache partition for devices with LOS recovery
+  cp -f $TMP/recovery.log /cache/recovery.log 2>/dev/null;
 }
 
 unmount_all() {
   ui_print " ";
   umount_apex;
+  umount /system_ext
   if [ "$device_abpartition" == "true" ]; then
     mount -o ro $ANDROID_ROOT
   else
@@ -742,6 +839,7 @@ on_addon_check() {
   supported_contacts_config="$(get_prop "ro.config.contacts")";
   supported_deskclock_config="$(get_prop "ro.config.deskclock")";
   supported_dialer_config="$(get_prop "ro.config.dialer")";
+  supported_gboard_config="$(get_prop "ro.config.gboard")";
   supported_markup_config="$(get_prop "ro.config.markup")";
   supported_messages_config="$(get_prop "ro.config.messages")";
   supported_photos_config="$(get_prop "ro.config.photos")";
@@ -961,37 +1059,75 @@ set_aosp_default() {
   fi;
 }
 
+# Android security patch level
+on_security_patch_check_v30() {
+  android_security_patch="$(get_prop "ro.build.version.security_patch")";
+  supported_security_patch="2020-11-05";
+}
+
+on_security_patch_check_v29() {
+  android_security_patch="$(get_prop "ro.build.version.security_patch")";
+  supported_security_patch="2020-08-05";
+}
+
 # Set pathmap
 ext_pathmap() {
   if [ "$android_sdk" == "$supported_sdk_v30" ]; then
-    SYSTEM_ADDOND="$SYSTEM/system_ext/addon.d";
-    SYSTEM_APP="$SYSTEM/system_ext/app";
-    SYSTEM_PRIV_APP="$SYSTEM/system_ext/priv-app";
-    SYSTEM_ETC_CONFIG="$SYSTEM/system_ext/etc/sysconfig";
-    SYSTEM_ETC_DEFAULT="$SYSTEM/system_ext/etc/default-permissions";
-    SYSTEM_ETC_PERM="$SYSTEM/system_ext/etc/permissions";
-    SYSTEM_ETC_PREF="$SYSTEM/system_ext/etc/preferred-apps";
-    SYSTEM_FRAMEWORK="$SYSTEM/system_ext/framework";
-    SYSTEM_LIB="$SYSTEM/system_ext/lib";
-    SYSTEM_LIB64="$SYSTEM/system_ext/lib64";
-    mkdir $SYSTEM_ADDOND 2>/dev/null;
-    mkdir $SYSTEM_ETC_CONFIG 2>/dev/null;
-    mkdir $SYSTEM_ETC_DEFAULT 2>/dev/null;
-    mkdir $SYSTEM_ETC_PREF 2>/dev/null;
-    mkdir $SYSTEM_LIB 2>/dev/null;
-    mkdir $SYSTEM_LIB64 2>/dev/null;
-    chmod 0755 $SYSTEM_ADDOND 2>/dev/null;
-    chmod 0755 $SYSTEM_ETC_CONFIG 2>/dev/null;
-    chmod 0755 $SYSTEM_ETC_DEFAULT 2>/dev/null;
-    chmod 0755 $SYSTEM_ETC_PREF 2>/dev/null;
-    chmod 0755 $SYSTEM_LIB 2>/dev/null;
-    chmod 0755 $SYSTEM_LIB64 2>/dev/null;
-    chcon -h u:object_r:system_file:s0 $SYSTEM_ADDOND 2>/dev/null;
-    chcon -h u:object_r:system_file:s0 $SYSTEM_ETC_CONFIG 2>/dev/null;
-    chcon -h u:object_r:system_file:s0 $SYSTEM_ETC_DEFAULT 2>/dev/null;
-    chcon -h u:object_r:system_file:s0 $SYSTEM_ETC_PREF 2>/dev/null;
-    chcon -h u:object_r:system_file:s0 $SYSTEM_LIB 2>/dev/null;
-    chcon -h u:object_r:system_file:s0 $SYSTEM_LIB64 2>/dev/null;
+    if [ "$dynamic_partitions" == "true" ]; then
+      if [ "$device_extpartition" == "true" ]; then
+        SYSTEM_ADDOND="$SYSTEM/system_ext/addon.d";
+        SYSTEM_APP="$SYSTEM/system_ext/app";
+        SYSTEM_PRIV_APP="$SYSTEM/system_ext/priv-app";
+        SYSTEM_ETC_CONFIG="$SYSTEM/system_ext/etc/sysconfig";
+        SYSTEM_ETC_DEFAULT="$SYSTEM/system_ext/etc/default-permissions";
+        SYSTEM_ETC_PERM="$SYSTEM/system_ext/etc/permissions";
+        SYSTEM_ETC_PREF="$SYSTEM/system_ext/etc/preferred-apps";
+        SYSTEM_FRAMEWORK="$SYSTEM/system_ext/framework";
+        SYSTEM_LIB="$SYSTEM/system_ext/lib";
+        SYSTEM_LIB64="$SYSTEM/system_ext/lib64";
+      fi;
+      if [ "$device_extpartition" == "false" ]; then
+        SYSTEM_ADDOND="$SYSTEM/addon.d";
+        SYSTEM_APP="$SYSTEM/app";
+        SYSTEM_PRIV_APP="$SYSTEM/priv-app";
+        SYSTEM_ETC_CONFIG="$SYSTEM/etc/sysconfig";
+        SYSTEM_ETC_DEFAULT="$SYSTEM/etc/default-permissions";
+        SYSTEM_ETC_PERM="$SYSTEM/etc/permissions";
+        SYSTEM_ETC_PREF="$SYSTEM/etc/preferred-apps";
+        SYSTEM_FRAMEWORK="$SYSTEM/framework";
+        SYSTEM_LIB="$SYSTEM/lib";
+        SYSTEM_LIB64="$SYSTEM/lib64";
+      fi;
+    else
+      SYSTEM_ADDOND="$SYSTEM/system_ext/addon.d";
+      SYSTEM_APP="$SYSTEM/system_ext/app";
+      SYSTEM_PRIV_APP="$SYSTEM/system_ext/priv-app";
+      SYSTEM_ETC_CONFIG="$SYSTEM/system_ext/etc/sysconfig";
+      SYSTEM_ETC_DEFAULT="$SYSTEM/system_ext/etc/default-permissions";
+      SYSTEM_ETC_PERM="$SYSTEM/system_ext/etc/permissions";
+      SYSTEM_ETC_PREF="$SYSTEM/system_ext/etc/preferred-apps";
+      SYSTEM_FRAMEWORK="$SYSTEM/system_ext/framework";
+      SYSTEM_LIB="$SYSTEM/system_ext/lib";
+      SYSTEM_LIB64="$SYSTEM/system_ext/lib64";
+      mkdir $SYSTEM_ADDOND 2>/dev/null;
+      mkdir $SYSTEM_ETC_CONFIG 2>/dev/null;
+      mkdir $SYSTEM_ETC_DEFAULT 2>/dev/null;
+      mkdir $SYSTEM_ETC_PREF 2>/dev/null;
+      mkdir $SYSTEM_LIB 2>/dev/null;
+      mkdir $SYSTEM_LIB64 2>/dev/null;
+      chmod 0755 $SYSTEM_ADDOND 2>/dev/null;
+      chmod 0755 $SYSTEM_ETC_CONFIG 2>/dev/null;
+      chmod 0755 $SYSTEM_ETC_DEFAULT 2>/dev/null;
+      chmod 0755 $SYSTEM_ETC_PREF 2>/dev/null;
+      chmod 0755 $SYSTEM_LIB 2>/dev/null;
+      chmod 0755 $SYSTEM_LIB64 2>/dev/null;
+      chcon -h u:object_r:system_file:s0 $SYSTEM_ADDOND 2>/dev/null;
+      chcon -h u:object_r:system_file:s0 $SYSTEM_ETC_CONFIG 2>/dev/null;
+      chcon -h u:object_r:system_file:s0 $SYSTEM_ETC_DEFAULT 2>/dev/null;
+      chcon -h u:object_r:system_file:s0 $SYSTEM_ETC_PREF 2>/dev/null;
+      chcon -h u:object_r:system_file:s0 $SYSTEM_LIB 2>/dev/null;
+      chcon -h u:object_r:system_file:s0 $SYSTEM_LIB64 2>/dev/null;
+    fi;
   fi;
 }
 
@@ -1098,7 +1234,7 @@ shared_library() {
 
 # Create temporary log directory
 logd() {
-  mkdir /cache/bitgapps
+  mkdir -p /cache/bitgapps
   chmod 0755 /cache/bitgapps
 }
 
@@ -3073,6 +3209,8 @@ sdk_v30_install() {
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_CONFIG/google_build.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_CONFIG/google_exclusives_enable.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_CONFIG/google-hiddenapi-package-whitelist.xml";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_CONFIG/google-rollback-package-whitelist.xml";
+      chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_CONFIG/google-staged-installer-whitelist.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_CONFIG/pixel_experience_2017.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_CONFIG/pixel_experience_2018.xml";
       chcon -h u:object_r:system_file:s0 "$SYSTEM_ETC_CONFIG/pixel_experience_2019_midyear.xml";
@@ -4454,22 +4592,31 @@ set_setup_install() {
       if [ "$android_sdk" -gt "28" ]; then
         rm -rf $SYSTEM/product/app/ManagedProvisioning
         rm -rf $SYSTEM/product/app/Provision
+        rm -rf $SYSTEM/product/app/SetupWizard
+        rm -rf $SYSTEM/product/app/LineageSetupWizard
         rm -rf $SYSTEM/product/priv-app/ManagedProvisioning
         rm -rf $SYSTEM/product/priv-app/Provision
+        rm -rf $SYSTEM/product/priv-app/LineageSetupWizard
       fi;
       if [ "$android_sdk" == "$supported_sdk_v30" ]; then
         rm -rf $SYSTEM/system_ext/app/ManagedProvisioning
         rm -rf $SYSTEM/system_ext/app/Provision
+        rm -rf $SYSTEM/system_ext/app/SetupWizard
+        rm -rf $SYSTEM/system_ext/app/LineageSetupWizard
         rm -rf $SYSTEM/system_ext/priv-app/ManagedProvisioning
         rm -rf $SYSTEM/system_ext/priv-app/Provision
+        rm -rf $SYSTEM/system_ext/priv-app/LineageSetupWizard
       fi;
       rm -rf $SYSTEM/app/ManagedProvisioning
       rm -rf $SYSTEM/app/Provision
+      rm -rf $SYSTEM/app/SetupWizard
+      rm -rf $SYSTEM/app/LineageSetupWizard
       rm -rf $SYSTEM/priv-app/GoogleBackupTransport
       rm -rf $SYSTEM/priv-app/GoogleRestore
       rm -rf $SYSTEM/priv-app/ManagedProvisioning
       rm -rf $SYSTEM/priv-app/Provision
       rm -rf $SYSTEM/priv-app/SetupWizard
+      rm -rf $SYSTEM/priv-app/LineageSetupWizard
     }
 
     # Unpack SetupWizard components
@@ -4908,6 +5055,27 @@ set_addon_zip() {
       # Set Google Dialer as default
       set_google_default;
     fi;
+    if [ "$supported_gboard_config" == "$supported_target" ]; then
+      ui_print "Installing Keyboard Google";
+      # Remove pre-installed Gboard
+      rm -rf $SYSTEM/app/Gboard*
+      rm -rf $SYSTEM/app/gboard*
+      rm -rf $SYSTEM/priv-app/Gboard*
+      rm -rf $SYSTEM/priv-app/gboard*
+      rm -rf $SYSTEM/product/app/Gboard*
+      rm -rf $SYSTEM/product/app/gboard*
+      rm -rf $SYSTEM/product/priv-app/Gboard*
+      rm -rf $SYSTEM/product/priv-app/gboard*
+      rm -rf $SYSTEM/system_ext/app/Gboard*
+      rm -rf $SYSTEM/system_ext/app/gboard*
+      rm -rf $SYSTEM/system_ext/priv-app/Gboard*
+      rm -rf $SYSTEM/system_ext/priv-app/gboard*
+      # Set install variable
+      ADDON_SYS="sys_app_GboardGooglePrebuilt.tar.xz";
+      PKG_SYS="GboardGooglePrebuilt";
+      # Install
+      target_sys;
+    fi;
     if [ "$supported_markup_config" == "$supported_target" ]; then
       ui_print "Installing Markup Google";
       # Remove pre-install Markup
@@ -5019,8 +5187,8 @@ set_addon_zip() {
       target_core;
     fi;
     if [ "$supported_wellbeing_config" == "$supported_target" ]; then
-      # Only Android SDK 29 and 28, support Google's Wellbeing
-      if [ "$android_sdk" == "$supported_sdk_v29" ] || [ "$android_sdk" == "$supported_sdk_v28" ]; then
+      # Android SDK 28 and above support Google's Wellbeing
+      if [ "$android_sdk" == "$supported_sdk_v30" ] || [ "$android_sdk" == "$supported_sdk_v29" ] || [ "$android_sdk" == "$supported_sdk_v28" ]; then
         ui_print "Installing Wellbeing Google";
         # Remove pre-install Wellbeing
         rm -rf $SYSTEM/app/Wellbeing*
@@ -5147,7 +5315,7 @@ set_addon_zip() {
         mv $TMP/restore/CalendarProvider $SYSTEM/system_ext/priv-app/CalendarProvider
       fi;
     fi;
-      if [ "$TARGET_CONTACTS_GOOGLE" == "true" ]; then
+    if [ "$TARGET_CONTACTS_GOOGLE" == "true" ]; then
       ui_print "Installing Contacts Google";
       # Backup
       test -d $SYSTEM/app/ContactsProvider && SYS_APP_CTT="true" || SYS_APP_CTT="false";
@@ -5233,7 +5401,7 @@ set_addon_zip() {
       # Install
       target_sys;
     fi;
-      if [ "$TARGET_DIALER_GOOGLE" == "true" ]; then
+    if [ "$TARGET_DIALER_GOOGLE" == "true" ]; then
       ui_print "Installing Dialer Google";
       # Remove AOSP Dialer
       rm -rf $SYSTEM/app/Dialer*
@@ -5256,7 +5424,28 @@ set_addon_zip() {
       # Set Google Dialer as default
       set_google_default;
     fi;
-      if [ "$TARGET_MARKUP_GOOGLE" == "true" ]; then
+    if [ "$TARGET_GBOARD_GOOGLE" == "true" ]; then
+      ui_print "Installing Keyboard Google";
+      # Remove pre-installed Gboard
+      rm -rf $SYSTEM/app/Gboard*
+      rm -rf $SYSTEM/app/gboard*
+      rm -rf $SYSTEM/priv-app/Gboard*
+      rm -rf $SYSTEM/priv-app/gboard*
+      rm -rf $SYSTEM/product/app/Gboard*
+      rm -rf $SYSTEM/product/app/gboard*
+      rm -rf $SYSTEM/product/priv-app/Gboard*
+      rm -rf $SYSTEM/product/priv-app/gboard*
+      rm -rf $SYSTEM/system_ext/app/Gboard*
+      rm -rf $SYSTEM/system_ext/app/gboard*
+      rm -rf $SYSTEM/system_ext/priv-app/Gboard*
+      rm -rf $SYSTEM/system_ext/priv-app/gboard*
+      # Set install variable
+      ADDON_SYS="sys_app_GboardGooglePrebuilt.tar.xz";
+      PKG_SYS="GboardGooglePrebuilt";
+      # Install
+      target_sys;
+    fi;
+    if [ "$TARGET_MARKUP_GOOGLE" == "true" ]; then
       ui_print "Installing Markup Google";
       # Remove pre-install Markup
       rm -rf $SYSTEM/app/MarkupGoogle*
@@ -5375,8 +5564,8 @@ set_addon_zip() {
       target_core;
     fi;
     if [ "$TARGET_WELLBEING_GOOGLE" == "true" ]; then
-      # Only Android SDK 29 and 28, support Google's Wellbeing
-      if [ "$android_sdk" == "$supported_sdk_v29" ] || [ "$android_sdk" == "$supported_sdk_v28" ]; then
+      # Android SDK 28 and above support Google's Wellbeing
+      if [ "$android_sdk" == "$supported_sdk_v30" ] || [ "$android_sdk" == "$supported_sdk_v29" ] || [ "$android_sdk" == "$supported_sdk_v28" ]; then
         ui_print "Installing Wellbeing Google";
         # Remove pre-install Wellbeing
         rm -rf $SYSTEM/app/Wellbeing*
@@ -5660,14 +5849,28 @@ cts_patch() {
           echo "ERROR: Safetynet patch does not support Android SDK $android_sdk" >> $CTS_PATCH;
         fi;
         if [ "$android_sdk" == "$supported_sdk_v29" ]; then
-          patch_v29;
-          cts_patch_system;
-          cts_patch_vendor;
+          # Check required android security patch level
+          on_security_patch_check_v29;
+          if [ "$android_security_patch" == "$supported_security_patch" ]; then
+            patch_v29;
+            cts_patch_system;
+            cts_patch_vendor;
+          else
+            echo "ERROR: Current security patch level ${android_security_patch}" >> $SEC_PATCH;
+            echo "ERROR: Required security patch level ${supported_security_patch}" >> $SEC_PATCH;
+          fi;
         fi;
         if [ "$android_sdk" == "$supported_sdk_v30" ]; then
-          patch_v30;
-          cts_patch_system;
-          cts_patch_vendor;
+          # Check required android security patch level
+          on_security_patch_check_v30;
+          if [ "$android_security_patch" == "$supported_security_patch" ]; then
+            patch_v30;
+            cts_patch_system;
+            cts_patch_vendor;
+          else
+            echo "ERROR: Current security patch level ${android_security_patch}" >> $SEC_PATCH;
+            echo "ERROR: Required security patch level ${supported_security_patch}" >> $SEC_PATCH;
+          fi;
         fi;
       else
         echo "ERROR: Config property set to 'false'" >> $CTS_PATCH;
@@ -5688,6 +5891,9 @@ sdk_fix() {
     if [ -f "$SYSTEM/product/build.prop" ]; then
       chmod 0600 $SYSTEM/product/build.prop
     fi;
+    if [ -f "$SYSTEM/system_ext/build.prop" ]; then
+      chmod 0600 $SYSTEM/system_ext/build.prop
+    fi;
     if [ "$device_vendorpartition" = "true" ]; then
       chmod 0600 $VENDOR/build.prop
     fi;
@@ -5702,6 +5908,9 @@ selinux_fix() {
   fi;
   if [ -f "$SYSTEM/product/build.prop" ]; then
     chcon -h u:object_r:system_file:s0 "$SYSTEM/product/build.prop";
+  fi;
+  if [ -f "$SYSTEM/system_ext/build.prop" ]; then
+    chcon -h u:object_r:system_file:s0 "$SYSTEM/system_ext/build.prop";
   fi;
   if [ "$device_vendorpartition" == "true" ]; then
     chcon -h u:object_r:vendor_file:s0 "$VENDOR/build.prop";
@@ -5785,13 +5994,13 @@ print_build_info() {
 
 # Set build defaults
 build_info() {
-  PKG="BiTGApps"
-  VER=""
-  ARCH=""
-  DATE=""
-  ID=""
-  VER_SDK=""
-  AUTH="TheHitMan @ xda-developers"
+  PKG="$PKG"
+  VER="$VER"
+  ARCH="$ARCH"
+  DATE="$DATE"
+  ID="$ID"
+  VER_SDK="$VER_SDK"
+  AUTH="$AUTH"
 }
 
 ui_print "Mount Partitions";
@@ -5810,12 +6019,14 @@ function pre_install() {
     super_partition;
     early_umount;
     mount_all;
+    system_property;
     system_layout;
     mount_stat;
     profile;
     on_target;
     on_version_check;
     on_platform_check;
+    on_platform;
   else
     selinux;
     clean_logs;
@@ -5827,6 +6038,7 @@ function pre_install() {
     super_partition;
     early_umount;
     mount_all;
+    system_property;
     system_layout;
     # boot_SAR;
     # boot_AB;
@@ -5853,39 +6065,76 @@ function pre_install() {
 }
 pre_install;
 
-diskfree() {
-  # Get the available space left on the device
-  size=`df -k $ANDROID_ROOT | tail -n 1 | tr -s ' ' | cut -d' ' -f4`
-  CAPACITY="200000";
-
-  # Disk space in human readable format (k=1024)
-  ds_hr=`df -h $ANDROID_ROOT | tail -n 1 | tr -s ' ' | cut -d' ' -f4`
-
+# Set partitions for checking available space
+df_system() {
   if [ "$device_superpartition" == "false" ]; then
-    # Check if the available space is greater than 200MB (200000KB)
-    ui_print "Checking System Space";
-    if [[ "$size" -gt "$CAPACITY" ]]; then
-      ui_print "$ds_hr";
-      ui_print " ";
-    else
-      ui_print " ";
-      ui_print "No space left in device. Aborting...";
-      on_abort "Current space : $ds_hr";
-      ui_print " ";
+    # Get the available space left on the device
+    size=`df -k $ANDROID_ROOT | tail -n 1 | tr -s ' ' | cut -d' ' -f4`
+    CAPACITY="200000";
+
+    # Disk space in human readable format (k=1024)
+    ds_hr=`df -h $ANDROID_ROOT | tail -n 1 | tr -s ' ' | cut -d' ' -f4`
+
+    # Print partition type
+    partition="System";
+  fi;
+}
+
+df_product() {
+  if [ "$device_superpartition" == "true" ]; then
+    if [ "$android_sdk" == "$supported_sdk_v29" ]; then
+      # Get the available space left on the device
+      size=`df -k /product | tail -n 1 | tr -s ' ' | cut -d' ' -f4`
+      CAPACITY="200000";
+
+      # Disk space in human readable format (k=1024)
+      ds_hr=`df -h /product | tail -n 1 | tr -s ' ' | cut -d' ' -f4`
+
+      # Print partition type
+      partition="Product";
     fi;
   fi;
-  if [ "$device_superpartition" == "true" ]; then
-    # Check if the available space is greater than 200MB (200000KB)
-    ui_print "Checking Product Space";
-    if [[ "$size" -gt "$CAPACITY" ]]; then
-      ui_print "$ds_hr";
-      ui_print " ";
-    else
-      ui_print " ";
-      ui_print "No space left in device. Aborting...";
-      on_abort "Current space : $ds_hr";
-      ui_print " ";
-    fi;
+}
+
+df_systemExt() {
+  if [ "$device_extpartition" == "true" ]; then
+    # Get the available space left on the device
+    size=`df -k /system_ext | tail -n 1 | tr -s ' ' | cut -d' ' -f4`
+    CAPACITY="200000";
+
+    # Disk space in human readable format (k=1024)
+    ds_hr=`df -h /system_ext | tail -n 1 | tr -s ' ' | cut -d' ' -f4`
+
+    # Print partition type
+    partition="SystemExt";
+  else
+    # Get the available space left on the device
+    size=`df -k $ANDROID_ROOT | tail -n 1 | tr -s ' ' | cut -d' ' -f4`
+    CAPACITY="200000";
+
+    # Disk space in human readable format (k=1024)
+    ds_hr=`df -h $ANDROID_ROOT | tail -n 1 | tr -s ' ' | cut -d' ' -f4`
+
+    # Print partition type
+    partition="System";
+  fi;
+}
+
+diskfree() {
+  # Set partition for disk check
+  df_system;
+  df_product;
+  df_systemExt;
+  # Check if the available space is greater than 200MB (200000KB)
+  ui_print "Checking ${partition} Space";
+  if [[ "$size" -gt "$CAPACITY" ]]; then
+    ui_print "$ds_hr";
+    ui_print " ";
+  else
+    ui_print " ";
+    ui_print "No space left in device. Aborting...";
+    on_abort "Current space : $ds_hr";
+    ui_print " ";
   fi;
 }
 if [ "$ZIPTYPE" == "basic" ]; then

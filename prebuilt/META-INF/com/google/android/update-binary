@@ -69,12 +69,39 @@ if [ "$ZIPTYPE" == "addon" ]; then
     export TARGET_CONTACTS_GOOGLE=""
     export TARGET_DESKCLOCK_GOOGLE=""
     export TARGET_DIALER_GOOGLE=""
+    export TARGET_GBOARD_GOOGLE=""
     export TARGET_MARKUP_GOOGLE=""
     export TARGET_MESSAGES_GOOGLE=""
     export TARGET_PHOTOS_GOOGLE=""
     export TARGET_SOUNDPICKER_GOOGLE=""
     export TARGET_WELLBEING_GOOGLE=""
   fi;
+fi;
+# Set build info
+export PKG="BiTGApps"
+export ARCH="$TARGET_ANDROID_ARCH"
+export DATE=""
+export ID=""
+export AUTH="TheHitMan @ xda-developers"
+if [ "$TARGET_ANDROID_SDK" == "30" ]; then
+  export VER="11.0.0"
+  export VER_SDK="30"
+fi;
+if [ "$TARGET_ANDROID_SDK" == "29" ]; then
+  export VER="10.0.0"
+  export VER_SDK="29"
+fi;
+if [ "$TARGET_ANDROID_SDK" == "28" ]; then
+  export VER="9.0.0"
+  export VER_SDK="28"
+fi;
+if [ "$TARGET_ANDROID_SDK" == "27" ]; then
+  export VER="8.1.0"
+  export VER_SDK="27"
+fi;
+if [ "$TARGET_ANDROID_SDK" == "25" ]; then
+  export VER="7.1.2"
+  export VER_SDK="25"
 fi;
 
 ui_print() {
