@@ -224,7 +224,10 @@ vendor_mnt() {
 ab_partition() {
   device_abpartition="false";
   if [ "$system_as_root" == "true" ]; then
-    if [ ! -z "$active_slot" ] || [ -n "$AB_OTA_UPDATER" ]; then
+    if [ ! -z "$active_slot" ]; then
+      device_abpartition="true";
+    fi;
+    if [ "$AB_OTA_UPDATER" == "true" ]; then
       device_abpartition="true";
     fi;
   fi;
@@ -487,6 +490,8 @@ system_layout() {
       SYSTEM="/system/system";
     elif [ -f /system/build.prop ] && [ -n "$(cat /etc/fstab | grep /system_root)" ]; then
       SYSTEM="/system";
+    elif [ -f /system/build.prop ] && [ -n "$(cat /etc/fstab | grep /system)" ]; then
+      SYSTEM="/system";
     else
       SYSTEM="/system";
     fi;
@@ -598,8 +603,60 @@ on_mount_failed() {
     cp -f $TMP/bitgapps_debug_failed_logs.tar.gz $INTERNAL/bitgapps_debug_failed_logs.tar.gz
   fi;
   if [ "$ZIPTYPE" == "addon" ]; then
-    tar -cz -f "$TMP/bitgapps_addon_failed_logs.tar.gz" *
-    cp -f $TMP/bitgapps_addon_failed_logs.tar.gz $INTERNAL/bitgapps_addon_failed_logs.tar.gz
+    if [ "$ADDON" == "conf" ]; then
+      tar -cz -f "$TMP/bitgapps_addon_failed_logs.tar.gz" *
+      cp -f $TMP/bitgapps_addon_failed_logs.tar.gz $INTERNAL/bitgapps_addon_failed_logs.tar.gz
+    fi;
+    if [ "$ADDON" == "sep" ]; then
+      if [ "$TARGET_ASSISTANT_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_assistant_failed_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_assistant_failed_logs.tar.gz $INTERNAL/bitgapps_addon_assistant_failed_logs.tar.gz
+      fi;
+      if [ "$TARGET_CALCULATOR_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_calculator_failed_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_calculator_failed_logs.tar.gz $INTERNAL/bitgapps_addon_calculator_failed_logs.tar.gz
+      fi;
+      if [ "$TARGET_CALENDAR_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_calendar_failed_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_calendar_failed_logs.tar.gz $INTERNAL/bitgapps_addon_calendar_failed_logs.tar.gz
+      fi;
+      if [ "$TARGET_CONTACTS_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_contacts_failed_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_contacts_failed_logs.tar.gz $INTERNAL/bitgapps_addon_contacts_failed_logs.tar.gz
+      fi;
+      if [ "$TARGET_DESKCLOCK_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_deskclock_failed_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_deskclock_failed_logs.tar.gz $INTERNAL/bitgapps_addon_deskclock_failed_logs.tar.gz
+      fi;
+      if [ "$TARGET_DIALER_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_dialer_failed_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_dialer_failed_logs.tar.gz $INTERNAL/bitgapps_addon_dialer_failed_logs.tar.gz
+      fi;
+      if [ "$TARGET_GBOARD_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_gboard_failed_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_gboard_failed_logs.tar.gz $INTERNAL/bitgapps_addon_gboard_failed_logs.tar.gz
+      fi;
+      if [ "$TARGET_MARKUP_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_markup_failed_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_markup_failed_logs.tar.gz $INTERNAL/bitgapps_addon_markup_failed_logs.tar.gz
+      fi;
+      if [ "$TARGET_MESSAGES_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_messages_failed_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_messages_failed_logs.tar.gz $INTERNAL/bitgapps_addon_messages_failed_logs.tar.gz
+      fi;
+      if [ "$TARGET_PHOTOS_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_photos_failed_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_photos_failed_logs.tar.gz $INTERNAL/bitgapps_addon_photos_failed_logs.tar.gz
+      fi;
+      if [ "$TARGET_SOUNDPICKER_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_soundpicker_failed_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_soundpicker_failed_logs.tar.gz $INTERNAL/bitgapps_addon_soundpicker_failed_logs.tar.gz
+      fi;
+      if [ "$TARGET_WELLBEING_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_wellbeing_failed_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_wellbeing_failed_logs.tar.gz $INTERNAL/bitgapps_addon_wellbeing_failed_logs.tar.gz
+      fi;
+    fi;
   fi;
   # Checkout log path
   cd /
@@ -639,8 +696,60 @@ on_install_failed() {
     cp -f $TMP/bitgapps_debug_failed_logs.tar.gz $INTERNAL/bitgapps_debug_failed_logs.tar.gz
   fi;
   if [ "$ZIPTYPE" == "addon" ]; then
-    tar -cz -f "$TMP/bitgapps_addon_failed_logs.tar.gz" *
-    cp -f $TMP/bitgapps_addon_failed_logs.tar.gz $INTERNAL/bitgapps_addon_failed_logs.tar.gz
+    if [ "$ADDON" == "conf" ]; then
+      tar -cz -f "$TMP/bitgapps_addon_failed_logs.tar.gz" *
+      cp -f $TMP/bitgapps_addon_failed_logs.tar.gz $INTERNAL/bitgapps_addon_failed_logs.tar.gz
+    fi;
+    if [ "$ADDON" == "sep" ]; then
+      if [ "$TARGET_ASSISTANT_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_assistant_failed_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_assistant_failed_logs.tar.gz $INTERNAL/bitgapps_addon_assistant_failed_logs.tar.gz
+      fi;
+      if [ "$TARGET_CALCULATOR_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_calculator_failed_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_calculator_failed_logs.tar.gz $INTERNAL/bitgapps_addon_calculator_failed_logs.tar.gz
+      fi;
+      if [ "$TARGET_CALENDAR_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_calendar_failed_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_calendar_failed_logs.tar.gz $INTERNAL/bitgapps_addon_calendar_failed_logs.tar.gz
+      fi;
+      if [ "$TARGET_CONTACTS_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_contacts_failed_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_contacts_failed_logs.tar.gz $INTERNAL/bitgapps_addon_contacts_failed_logs.tar.gz
+      fi;
+      if [ "$TARGET_DESKCLOCK_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_deskclock_failed_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_deskclock_failed_logs.tar.gz $INTERNAL/bitgapps_addon_deskclock_failed_logs.tar.gz
+      fi;
+      if [ "$TARGET_DIALER_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_dialer_failed_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_dialer_failed_logs.tar.gz $INTERNAL/bitgapps_addon_dialer_failed_logs.tar.gz
+      fi;
+      if [ "$TARGET_GBOARD_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_gboard_failed_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_gboard_failed_logs.tar.gz $INTERNAL/bitgapps_addon_gboard_failed_logs.tar.gz
+      fi;
+      if [ "$TARGET_MARKUP_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_markup_failed_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_markup_failed_logs.tar.gz $INTERNAL/bitgapps_addon_markup_failed_logs.tar.gz
+      fi;
+      if [ "$TARGET_MESSAGES_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_messages_failed_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_messages_failed_logs.tar.gz $INTERNAL/bitgapps_addon_messages_failed_logs.tar.gz
+      fi;
+      if [ "$TARGET_PHOTOS_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_photos_failed_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_photos_failed_logs.tar.gz $INTERNAL/bitgapps_addon_photos_failed_logs.tar.gz
+      fi;
+      if [ "$TARGET_SOUNDPICKER_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_soundpicker_failed_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_soundpicker_failed_logs.tar.gz $INTERNAL/bitgapps_addon_soundpicker_failed_logs.tar.gz
+      fi;
+      if [ "$TARGET_WELLBEING_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_wellbeing_failed_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_wellbeing_failed_logs.tar.gz $INTERNAL/bitgapps_addon_wellbeing_failed_logs.tar.gz
+      fi;
+    fi;
   fi;
   # Checkout log path
   cd /
@@ -680,8 +789,60 @@ on_install_complete() {
     cp -f $TMP/bitgapps_debug_complete_logs.tar.gz $INTERNAL/bitgapps_debug_complete_logs.tar.gz
   fi;
   if [ "$ZIPTYPE" == "addon" ]; then
-    tar -cz -f "$TMP/bitgapps_addon_complete_logs.tar.gz" *
-    cp -f $TMP/bitgapps_addon_complete_logs.tar.gz $INTERNAL/bitgapps_addon_complete_logs.tar.gz
+    if [ "$ADDON" == "conf" ]; then
+      tar -cz -f "$TMP/bitgapps_addon_complete_logs.tar.gz" *
+      cp -f $TMP/bitgapps_addon_complete_logs.tar.gz $INTERNAL/bitgapps_addon_complete_logs.tar.gz
+    fi;
+    if [ "$ADDON" == "sep" ]; then
+      if [ "$TARGET_ASSISTANT_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_assistant_complete_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_assistant_complete_logs.tar.gz $INTERNAL/bitgapps_addon_assistant_complete_logs.tar.gz
+      fi;
+      if [ "$TARGET_CALCULATOR_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_calculator_complete_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_calculator_complete_logs.tar.gz $INTERNAL/bitgapps_addon_calculator_complete_logs.tar.gz
+      fi;
+      if [ "$TARGET_CALENDAR_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_calendar_complete_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_calendar_complete_logs.tar.gz $INTERNAL/bitgapps_addon_calendar_complete_logs.tar.gz
+      fi;
+      if [ "$TARGET_CONTACTS_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_contacts_complete_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_contacts_complete_logs.tar.gz $INTERNAL/bitgapps_addon_contacts_complete_logs.tar.gz
+      fi;
+      if [ "$TARGET_DESKCLOCK_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_deskclock_complete_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_deskclock_complete_logs.tar.gz $INTERNAL/bitgapps_addon_deskclock_complete_logs.tar.gz
+      fi;
+      if [ "$TARGET_DIALER_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_dialer_complete_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_dialer_complete_logs.tar.gz $INTERNAL/bitgapps_addon_dialer_complete_logs.tar.gz
+      fi;
+      if [ "$TARGET_GBOARD_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_gboard_complete_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_gboard_complete_logs.tar.gz $INTERNAL/bitgapps_addon_gboard_complete_logs.tar.gz
+      fi;
+      if [ "$TARGET_MARKUP_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_markup_complete_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_markup_complete_logs.tar.gz $INTERNAL/bitgapps_addon_markup_complete_logs.tar.gz
+      fi;
+      if [ "$TARGET_MESSAGES_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_messages_complete_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_messages_complete_logs.tar.gz $INTERNAL/bitgapps_addon_messages_complete_logs.tar.gz
+      fi;
+      if [ "$TARGET_PHOTOS_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_photos_complete_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_photos_complete_logs.tar.gz $INTERNAL/bitgapps_addon_photos_complete_logs.tar.gz
+      fi;
+      if [ "$TARGET_SOUNDPICKER_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_soundpicker_complete_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_soundpicker_complete_logs.tar.gz $INTERNAL/bitgapps_addon_soundpicker_complete_logs.tar.gz
+      fi;
+      if [ "$TARGET_WELLBEING_GOOGLE" == "true" ]; then
+        tar -cz -f "$TMP/bitgapps_addon_wellbeing_complete_logs.tar.gz" *
+        cp -f $TMP/bitgapps_addon_wellbeing_complete_logs.tar.gz $INTERNAL/bitgapps_addon_wellbeing_complete_logs.tar.gz
+      fi;
+    fi;
   fi;
   # Checkout log path
   cd /
@@ -714,7 +875,33 @@ cleanup() {
   rm -rf $TMP/addon.sh
   rm -rf $TMP/bin
   rm -rf $TMP/bitgapps_debug_complete_logs.tar.gz
+  rm -rf $TMP/bitgapps_addon_complete_logs.tar.gz
+  rm -rf $TMP/bitgapps_addon_assistant_complete_logs.tar.gz
+  rm -rf $TMP/bitgapps_addon_calculator_complete_logs.tar.gz
+  rm -rf $TMP/bitgapps_addon_calendar_complete_logs.tar.gz
+  rm -rf $TMP/bitgapps_addon_contacts_complete_logs.tar.gz
+  rm -rf $TMP/bitgapps_addon_deskclock_complete_logs.tar.gz
+  rm -rf $TMP/bitgapps_addon_dialer_complete_logs.tar.gz
+  rm -rf $TMP/bitgapps_addon_gboard_complete_logs.tar.gz
+  rm -rf $TMP/bitgapps_addon_markup_complete_logs.tar.gz
+  rm -rf $TMP/bitgapps_addon_messages_complete_logs.tar.gz
+  rm -rf $TMP/bitgapps_addon_photos_complete_logs.tar.gz
+  rm -rf $TMP/bitgapps_addon_soundpicker_complete_logs.tar.gz
+  rm -rf $TMP/bitgapps_addon_wellbeing_complete_logs.tar.gz
   rm -rf $TMP/bitgapps_debug_failed_logs.tar.gz
+  rm -rf $TMP/bitgapps_addon_failed_logs.tar.gz
+  rm -rf $TMP/bitgapps_addon_assistant_failed_logs.tar.gz
+  rm -rf $TMP/bitgapps_addon_calculator_failed_logs.tar.gz
+  rm -rf $TMP/bitgapps_addon_calendar_failed_logs.tar.gz
+  rm -rf $TMP/bitgapps_addon_contacts_failed_logs.tar.gz
+  rm -rf $TMP/bitgapps_addon_deskclock_failed_logs.tar.gz
+  rm -rf $TMP/bitgapps_addon_dialer_failed_logs.tar.gz
+  rm -rf $TMP/bitgapps_addon_gboard_failed_logs.tar.gz
+  rm -rf $TMP/bitgapps_addon_markup_failed_logs.tar.gz
+  rm -rf $TMP/bitgapps_addon_messages_failed_logs.tar.gz
+  rm -rf $TMP/bitgapps_addon_photos_failed_logs.tar.gz
+  rm -rf $TMP/bitgapps_addon_soundpicker_failed_logs.tar.gz
+  rm -rf $TMP/bitgapps_addon_wellbeing_failed_logs.tar.gz
   rm -rf $TMP/busybox-arm
   rm -rf $TMP/bb
   rm -rf $TMP/curl
@@ -722,6 +909,9 @@ cleanup() {
   rm -rf $TMP/g.prop
   rm -rf $TMP/init.bootlog.rc
   rm -rf $TMP/installer.sh
+  rm -rf $TMP/IS_MOUNTED_SAR
+  rm -rf $TMP/IS_MOUNTED_SAS
+  rm -rf $TMP/IS_LAYOUT_SYSTEM
   rm -rf $TMP/out
   rm -rf $TMP/pm.sh
   rm -rf $TMP/restore
@@ -4841,7 +5031,7 @@ set_google_default() {
   fi;
 }
 
-set_addon_zip() {
+set_addon_zip_conf() {
   # Config based and combined packages
   if [ "$ADDON" == "conf" ]; then
     if [ "$supported_calculator_config" == "$supported_target" ]; then
@@ -5211,6 +5401,9 @@ set_addon_zip() {
       fi;
     fi;
   fi;
+}
+
+set_addon_zip_sep() {
   # Separate addon zip file
   if [ "$ADDON" == "sep" ]; then
     if [ "$TARGET_CALCULATOR_GOOGLE" == "true" ]; then
@@ -5592,18 +5785,21 @@ set_addon_zip() {
 
 # Set addon package installation
 set_addon_install() {
-  set_addon_zip;
+  if [ "$addon_config" == "true" ]; then
+    set_addon_zip_conf;
+  else
+    echo "ERROR: Config file not found" >> $ADDON_CONFIG;
+  fi;
+  if [ "$addon_config" == "false" ]; then
+    set_addon_zip_sep;
+  fi;
   ui_print " ";
   ui_print "Done";
 }
 
 # Install config dependent packages
 on_addon_install() {
-  if [ "$addon_config" == "true" ]; then
-    set_addon_install;
-  else
-    echo "ERROR: Config file not found" >> $ADDON_CONFIG;
-  fi;
+  set_addon_install;
 }
 
 # Enable Google Assistant
@@ -6107,7 +6303,8 @@ df_systemExt() {
 
     # Print partition type
     partition="SystemExt";
-  else
+  fi;
+  if [ "$device_extpartition" == "false" ]; then
     # Get the available space left on the device
     size=`df -k $ANDROID_ROOT | tail -n 1 | tr -s ' ' | cut -d' ' -f4`
     CAPACITY="200000";
